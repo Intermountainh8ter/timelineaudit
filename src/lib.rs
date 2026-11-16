@@ -691,6 +691,72 @@ pub fn selection_audit(
     })
 }
 
+// ---------------------------------------------------------------- power of the Brier measure
+
+/// How often the bootstrap interval on Brier skill excludes zero for claim
+/// sets of one size.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BrierPower {
+    pub size: usize,
+    pub excludes_zero_rate: f64,
+    pub median_skill: f64,
+}
+
+/// Draw `size` resolved claims without replacement `draws` times and report
+/// the share whose `boot`-resample interval on Brier skill has a lower end
+/// above zero. Returns `None` if fewer than `size` resolved claims carry a
+/// probability.
+pub fn power_brier(
+    claims: &[Claim],
+    as_of: i64,
+    size: usize,
+    draws: usize,
+    boot: usize,
+    seed: u64,
+) -> Option<BrierPower> {
+    let sq: Vec<f64> = claims
+        .iter()
+        .filter_map(|c| {
+            let o = match c.status(as_of) {
+                Status::Hit => 1.0,
+                Status::Miss => 0.0,
+                _ => return None,
+            };
+            c.prob.map(|p| (p - o) * (p - o))
+        })
+        .collect();
+    if size == 0 || sq.len() < size || draws == 0 {
+        return None;
+    }
+    let mut rng = Rng::new(seed);
+    let mut excluded = 0usize;
+    let mut skills = Vec::with_capacity(draws);
+    for d in 0..draws {
+        let mut idx: Vec<usize> = (0..sq.len()).collect();
+        for i in 0..size {
+            let j = i + rng.below(sq.len() - i);
+            idx.swap(i, j);
+        }
+        let chosen: Vec<f64> = idx[..size].iter().map(|&i| sq[i]).collect();
+        let ci = bootstrap_ci(
+            size,
+            |ix| ix.iter().map(|&i| chosen[i]).sum::<f64>() / ix.len() as f64,
+            boot,
+            seed.wrapping_add(1 + d as u64),
+        );
+        // Skill falls as Brier rises, so the lower end comes from the upper Brier end.
+        if 1.0 - ci.1 / COIN_BRIER > 0.0 {
+            excluded += 1;
+        }
+        skills.push(1.0 - chosen.iter().sum::<f64>() / size as f64 / COIN_BRIER);
+    }
+    Some(BrierPower {
+        size,
+        excludes_zero_rate: excluded as f64 / draws as f64,
+        median_skill: median(&mut skills),
+    })
+}
+
 // ---------------------------------------------------------------- JSON
 
 fn num(v: f64) -> String {

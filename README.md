@@ -55,6 +55,16 @@ hit-favouring pick by 3.252567 months and a miss-favouring pick by 8.443532
 months. Which claims are included can move a score as much as the thing
 scored. This is a simulation; no real grading was examined.
 
+## The power audit
+
+`results/274-power-brier.json` draws claim sets of 20, 50 and 100 from the
+same kind of simulated world, 200 times each, for the forecaster that states
+each event's true chance. The 1000-resample interval on Brier skill against
+the coin has a lower end above zero in 0.405 of draws at 20 claims, 0.75 at 50
+and 0.975 at 100. Draws overlap, so they are not independent. This is a
+simulation; it sets a rough minimum claim count for the Brier measure and
+says nothing about any real claim set.
+
 ## Status
 
 The scorer, the claim format and the audit exist. The claim table is empty.
@@ -68,6 +78,7 @@ looked up.
 cargo test --locked
 cargo run --locked --release -- baselines --seed 7 --n 400 --out results/<name>.json
 cargo run --locked --release -- selection-audit --seed 7 --n 400 --pick 15 --draws 200 --out results/<name>.json
+cargo run --locked --release -- power-brier --seed 7 --n 400 --sizes 20,50,100 --draws 200 --boot 1000 --out results/<name>.json
 cargo run --locked --release -- check --claims claims/claims.tsv --as-of <YYYY-MM-DD>
 cargo run --locked --release -- score --claims claims/claims.tsv --as-of <YYYY-MM-DD> --out results/<name>.json
 ```
