@@ -1,0 +1,16 @@
+{
+  "kind": "score",
+  "simulated": false,
+  "claims_file": "claims/claims.tsv",
+  "as_of": "2026-11-16",
+  "n_claims": 3,
+  "resamples": 2000,
+  "groups": {
+    "overall": {"n_claims": 3, "n_open": 2, "n_unclear": 0, "n_resolved": 1, "hit_rate": 0.000000, "hit_rate_ci95": [0.000000, 0.000000], "n_short_lead": 1, "hit_rate_short_lead": 0.000000, "n_long_lead": 0, "hit_rate_long_lead": null, "n_slip": 1, "n_censored": 1, "median_slip_months": 10.513347, "median_slip_ci95": [10.513347, 10.513347], "slip_is_lower_bound": true, "n_with_probability": 0, "brier": null, "brier_ci95": [null, null], "brier_skill_vs_coin": null, "brier_skill_ci95": [null, null]},
+    "source:ai2027": {"n_claims": 3, "n_open": 2, "n_unclear": 0, "n_resolved": 1, "hit_rate": 0.000000, "hit_rate_ci95": [0.000000, 0.000000], "n_short_lead": 1, "hit_rate_short_lead": 0.000000, "n_long_lead": 0, "hit_rate_long_lead": null, "n_slip": 1, "n_censored": 1, "median_slip_months": 10.513347, "median_slip_ci95": [10.513347, 10.513347], "slip_is_lower_bound": true, "n_with_probability": 0, "brier": null, "brier_ci95": [null, null], "brier_skill_vs_coin": null, "brier_skill_ci95": [null, null]},
+    "class:capability": {"n_claims": 1, "n_open": 0, "n_unclear": 0, "n_resolved": 1, "hit_rate": 0.000000, "hit_rate_ci95": [0.000000, 0.000000], "n_short_lead": 1, "hit_rate_short_lead": 0.000000, "n_long_lead": 0, "hit_rate_long_lead": null, "n_slip": 1, "n_censored": 1, "median_slip_months": 10.513347, "median_slip_ci95": [10.513347, 10.513347], "slip_is_lower_bound": true, "n_with_probability": 0, "brier": null, "brier_ci95": [null, null], "brier_skill_vs_coin": null, "brier_skill_ci95": [null, null]},
+    "class:economy": {"n_claims": 1, "n_open": 1, "n_unclear": 0, "n_resolved": 0, "hit_rate": null, "hit_rate_ci95": [null, null], "n_short_lead": 0, "hit_rate_short_lead": null, "n_long_lead": 0, "hit_rate_long_lead": null, "n_slip": 0, "n_censored": 0, "median_slip_months": null, "median_slip_ci95": [null, null], "slip_is_lower_bound": false, "n_with_probability": 0, "brier": null, "brier_ci95": [null, null], "brier_skill_vs_coin": null, "brier_skill_ci95": [null, null]},
+    "class:governance": {"n_claims": 1, "n_open": 1, "n_unclear": 0, "n_resolved": 0, "hit_rate": null, "hit_rate_ci95": [null, null], "n_short_lead": 0, "hit_rate_short_lead": null, "n_long_lead": 0, "hit_rate_long_lead": null, "n_slip": 0, "n_censored": 0, "median_slip_months": null, "median_slip_ci95": [null, null], "slip_is_lower_bound": false, "n_with_probability": 0, "brier": null, "brier_ci95": [null, null], "brier_skill_vs_coin": null, "brier_skill_ci95": [null, null]}
+  },
+  "provenance": {"started_at": "2026-11-16T17:07:15Z", "seeds": [7], "command": "target/release/timelineaudit score --claims claims/claims.tsv --as-of 2026-11-16 --seed 7 --resamples 2000 --out results/278-real-claims-first.json", "hardware": "linux x86_64", "wall_s": 0.002, "data_sources": [{"url": "https://ai-2027.com", "license": "see each claim's source"}]}
+}

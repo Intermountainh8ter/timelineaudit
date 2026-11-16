@@ -37,3 +37,29 @@ Simulated; no real claim is used. The world is the one used by power-brier (400 
 - Falsifier: excludes_zero_rate above 0.05 at any of the three sizes at seed 7.
 - Command: `cargo run --locked -q --release -- brier-null --seed 7 --n 400 --sizes 20,50,100 --draws 200 --boot 1000 --out results/275-brier-null.json`
 - Limit: draws come from one finite world and overlap; a statement about the simulated world and the Brier measure only, not any real claim set.
+
+## 2026-11-16T17:05:59Z real-claims-first proposal:62a639b0be78e2cdd52f3523073dc288dc3a3727d9218b44732f5abe4f8eb364
+
+Real input, first use. Source: the AI 2027 scenario (https://ai-2027.com, published 2025-04-03 as read from the page; the made_on date used for every claim). Sections named before being read for claims: the five dated sections of the scenario's narrative, "Mid 2025: Stumbling Agents", "Late 2025: The World's Most Expensive AI", "Early 2026: Coding Automation", "Mid 2026: China Wakes Up" and "Late 2026: AI Takes Some Jobs". Per the extraction rule in docs/PREREGISTRATION.md every sentence that asserts something will have happened by a date is entered; sentences that are narrated in the scenario's own past tense but state events in the 2025 to 2026 window count as dated claims, and a sentence with no resolution rule counts in not-checkable and is listed. Dates are read by the rule in the pre-registration (mid = 06-30, late = 12-31, early = 03-31). Resolution rules are written in a second dated section before any outcome is looked up. Scoring date 2026-11-16.
+
+- Hypothesis: of the resolved dated claims extracted from these sections, the hit rate (share that happened on or before the stated date) is at most 0.5 at as-of 2026-11-16.
+- Metric: `/groups/overall/hit_rate`.
+- Expected: hit rate at most 0.5 (range 0.0 to 0.5); the count of resolved claims is reported beside it.
+- Falsifier: a hit rate above 0.5 on the extracted resolved claims. If fewer than 5 claims resolve the result is inconclusive and the hypothesis is not scored either way.
+- Command: `cargo run --locked -q --release -- score --claims claims/claims.tsv --as-of 2026-11-16 --seed 7 --resamples 2000 --out results/278-real-claims-first.json`
+- Limit: a statement about the extracted dated claims of one source; no result says when AGI will arrive. Exploratory except where H2/H3 apply.
+
+## 2026-11-16T17:06:52Z real-claims-first-rules proposal:62a639b0be78e2cdd52f3523073dc288dc3a3727d9218b44732f5abe4f8eb364
+
+Rules written after reading the five named sections and before any outcome was looked up. made_on is 2025-04-03 for every claim. Extraction applies the pre-registered rule: a sentence enters the table if it asserts a dated, publicly checkable event that was not already true on 2025-04-03; every other asserting sentence is counted not-checkable (its item number in the numbered list read from the page is given).
+
+Entered claims:
+- `ai2027-flop-1e27` (capability, due 2025-12-31, item 10: "OpenBrain's latest public model—Agent-0—was trained with 10^27 FLOP."). Rule: a publicly released model whose training compute is estimated at 1e27 FLOP or more in the Epoch AI notable-models data, first documented on or before 2025-12-31.
+- `ai2027-market-30pct` (economy, due 2026-12-31, item 28: "The stock market has gone up 30% in 2026, led by OpenBrain, Nvidia…"). Rule: the S&P 500 price return for calendar 2026 is 30% or more at the 2026-12-31 close. Not due at as-of 2026-11-16, so outcome `-`.
+- `ai2027-dc-protest` (governance, due 2026-12-31, item 30: "…there is a 10,000 person anti-AI protest in DC."). Rule: a news report of an anti-AI protest in Washington DC with an attendance of 10,000 or more, dated on or before 2026-12-31.
+
+Not checkable (counted, not scored): items 1, 3, 5 (already true on made_on or rejected by the parser as not a forecast: Operator, deep-research agents and a 200-dollar tier existed before 2025-04-03), 2, 4, 6, 7, 8, 9, 11 to 27 and 29, 31, 32 (descriptive, relative or about the scenario's fictional companies, or China's compute shares with no public measure; item 12 and 15 have no cheap public rule). Total not checkable: 29 of 32 listed items.
+
+## 2026-11-16T17:07:14Z real-claims-first-lookup proposal:62a639b0be78e2cdd52f3523073dc288dc3a3727d9218b44732f5abe4f8eb364
+
+Outcome lookups, rules unchanged. `ai2027-flop-1e27`: Epoch AI notable-models CSV (https://epoch.ai/data/notable_ai_models.csv, 1094 rows, latest publication date 2026-11-10): the largest estimate published on or before 2025-12-31 is 5.0e26 FLOP (Grok 4, 2025-07-09); the only entry at 9.4e26 (GPT-6 Astra, 2026-09-03) is later and below 1e27. No qualifying model: outcome `-`, overdue, counted as a miss. `ai2027-market-30pct` and `ai2027-dc-protest` are due 2026-12-31, after the as-of date, so outcome `-` (open); the protest lookup was one failed web search and no report was found, so it is not evidence either way. Expected consequence under the pre-registered stop rule: fewer than 5 resolved claims, result inconclusive.

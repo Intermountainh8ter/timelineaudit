@@ -75,9 +75,23 @@ power rates above are therefore not produced by the interval method alone.
 This is a simulation, one finite world, and says nothing about any real claim
 set.
 
+## First real claims
+
+`results/278-real-claims-first.json` scores the claims entered from the five
+dated sections of the AI 2027 scenario (Mid 2025 to Late 2026), scoring date
+2026-11-16. Of 32 listed items, 3 were checkable by the pre-registered rule
+and 29 were counted not-checkable. Of the 3 claims, 1 is resolved and 2 are
+not yet due. The resolved claim (a public model trained with 1e27 FLOP by the
+end of 2025; the largest Epoch AI estimate by then is 5.0e26 FLOP) did not
+happen on time, so the hit rate is 0.0 on 1 resolved claim. Fewer than 5
+claims resolved, so under the pre-registered stop rule the result is
+inconclusive and the hypothesis is not scored. It says nothing about when AGI
+will arrive.
+
 ## Status
 
-The scorer, the claim format and the audit exist. The claim table is empty.
+The scorer, the claim format and the audit exist. The claim table holds 3
+claims from one source.
 Claims are added one pre-registered section at a time, each with its wording
 and resolution rule in `preregistration_additions.md` before its outcome is
 looked up.
