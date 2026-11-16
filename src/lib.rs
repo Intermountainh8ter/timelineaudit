@@ -606,6 +606,91 @@ pub fn synth_claims(f: Forecaster, n: usize, seed: u64, as_of: i64) -> Vec<Claim
         .collect()
 }
 
+// ---------------------------------------------------------------- selection audit
+
+/// How far a subset of claims moves the headline measures from the full set.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Shift {
+    pub median_abs_slip_shift_months: f64,
+    pub median_abs_hit_rate_shift: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pick {
+    Random,
+    HitFavouring,
+    MissFavouring,
+}
+
+impl Pick {
+    pub const ALL: [Pick; 3] = [Pick::Random, Pick::HitFavouring, Pick::MissFavouring];
+    pub fn name(self) -> &'static str {
+        match self {
+            Pick::Random => "random",
+            Pick::HitFavouring => "hit_favouring",
+            Pick::MissFavouring => "miss_favouring",
+        }
+    }
+}
+
+fn subset_measures(claims: &[&Claim], as_of: i64) -> (f64, f64) {
+    let slips: Vec<Slip> = claims.iter().filter_map(|c| c.slip(as_of)).collect();
+    let hits = claims
+        .iter()
+        .filter(|c| c.status(as_of) == Status::Hit)
+        .count();
+    (median_slip(&slips).0, hits as f64 / claims.len() as f64)
+}
+
+/// Draw `pick` claims by `rule` `draws` times from the resolved claims and
+/// report the median absolute shift of median slip and of hit rate from the
+/// full resolved set. Returns `None` if the pool is smaller than `pick`.
+pub fn selection_audit(
+    claims: &[Claim],
+    as_of: i64,
+    rule: Pick,
+    pick: usize,
+    draws: usize,
+    seed: u64,
+) -> Option<Shift> {
+    let resolved: Vec<&Claim> = claims
+        .iter()
+        .filter(|c| matches!(c.status(as_of), Status::Hit | Status::Miss))
+        .collect();
+    let (full_slip, full_hit) = subset_measures(&resolved, as_of);
+    let pool: Vec<&Claim> = resolved
+        .iter()
+        .copied()
+        .filter(|c| match rule {
+            Pick::Random => true,
+            Pick::HitFavouring => c.status(as_of) == Status::Hit,
+            Pick::MissFavouring => c.status(as_of) == Status::Miss,
+        })
+        .collect();
+    if pick == 0 || pool.len() < pick {
+        return None;
+    }
+    let mut rng = Rng::new(seed);
+    let mut slip_shifts = Vec::with_capacity(draws);
+    let mut hit_shifts = Vec::with_capacity(draws);
+    for _ in 0..draws {
+        // Partial Fisher-Yates: the first `pick` entries are the draw.
+        let mut idx: Vec<usize> = (0..pool.len()).collect();
+        for i in 0..pick {
+            let j = i + rng.below(pool.len() - i);
+            idx.swap(i, j);
+        }
+        let chosen: Vec<&Claim> = idx[..pick].iter().map(|&i| pool[i]).collect();
+        let (s, h) = subset_measures(&chosen, as_of);
+        slip_shifts.push((s - full_slip).abs());
+        hit_shifts.push((h - full_hit).abs());
+    }
+    Some(Shift {
+        median_abs_slip_shift_months: median(&mut slip_shifts),
+        median_abs_hit_rate_shift: median(&mut hit_shifts),
+    })
+}
+
 // ---------------------------------------------------------------- JSON
 
 fn num(v: f64) -> String {

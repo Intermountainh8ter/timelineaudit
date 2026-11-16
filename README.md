@@ -46,6 +46,15 @@ A forecaster that puts every date 90 days too early shows a median slip of
 3.334702 months against 0.377823, and a hit rate of 0.245. This is a
 simulation; no real claim has been scored.
 
+## The selection audit
+
+`results/271-selection-audit.json` draws 15 claims from the same kind of
+simulated world, 200 times, by three rules. Against the full set, a random
+draw moves the median slip by 1.839836 months (median over draws), a
+hit-favouring pick by 3.252567 months and a miss-favouring pick by 8.443532
+months. Which claims are included can move a score as much as the thing
+scored. This is a simulation; no real grading was examined.
+
 ## Status
 
 The scorer, the claim format and the audit exist. The claim table is empty.
@@ -58,6 +67,7 @@ looked up.
 ```
 cargo test --locked
 cargo run --locked --release -- baselines --seed 7 --n 400 --out results/<name>.json
+cargo run --locked --release -- selection-audit --seed 7 --n 400 --pick 15 --draws 200 --out results/<name>.json
 cargo run --locked --release -- check --claims claims/claims.tsv --as-of <YYYY-MM-DD>
 cargo run --locked --release -- score --claims claims/claims.tsv --as-of <YYYY-MM-DD> --out results/<name>.json
 ```

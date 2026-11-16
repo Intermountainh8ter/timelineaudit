@@ -231,3 +231,26 @@ fn the_claim_table_round_trips_through_tsv() {
         claims
     );
 }
+
+#[test]
+fn selection_audit_is_seeded_and_favoured_picks_move_the_slip() {
+    let claims = synth_claims(Forecaster::Calibrated, 400, 7, as_of());
+    let run = |rule| timelineaudit::selection_audit(&claims, as_of(), rule, 15, 50, 7).unwrap();
+    let a = run(timelineaudit::Pick::HitFavouring);
+    assert_eq!(a, run(timelineaudit::Pick::HitFavouring));
+    // Hits land early and misses late, so favouring either moves the median
+    // slip further than a random draw does.
+    let r = run(timelineaudit::Pick::Random);
+    let m = run(timelineaudit::Pick::MissFavouring);
+    assert!(a.median_abs_slip_shift_months > r.median_abs_slip_shift_months);
+    assert!(m.median_abs_slip_shift_months > r.median_abs_slip_shift_months);
+    assert!(timelineaudit::selection_audit(
+        &claims,
+        as_of(),
+        timelineaudit::Pick::Random,
+        1000,
+        5,
+        7
+    )
+    .is_none());
+}
