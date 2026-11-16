@@ -1,0 +1,70 @@
+# timelineaudit
+
+A pre-registered ledger of one thing that can be checked about the claim
+that artificial general intelligence, and the end of the world as we know
+it, is due around 2027: **the dated predictions those forecasts make along
+the way, scored against what happened.**
+
+Whether a scenario's ending is right cannot be known before it arrives, and
+this project does not claim to know. But a scenario that reaches its crisis
+in 2027 also says what should be true in 2025 and 2026. Those statements
+have dates, and the dates pass. timelineaudit records each one, with its
+source and the rule for deciding it, and scores the record. Sources that
+predict slow progress are scored by the same rules.
+
+## What it measures
+
+| measure | question | score | null value |
+|---|---|---|---|
+| hit rate | Of the claims whose date has passed, how many happened on time? | share of resolved claims | none: depends on how hard the claims were |
+| timing slip | How far from the stated date did events land? | median months, observed minus stated | 0 |
+| Brier skill | Were the stated probabilities better than saying 0.5 to everything? | 1 - Brier / 0.25 | 0 |
+
+Each is reported for all claims, per source, per class of claim
+(capability, deployment, economy, governance, safety) and for short-lead
+and long-lead claims apart. The hypotheses, the rule for extracting claims
+without cherry-picking, and the limits on what may be concluded are fixed in
+[docs/PREREGISTRATION.md](docs/PREREGISTRATION.md).
+
+## What it does not say
+
+No result here says when AGI will arrive, or that it will not, or how
+dangerous it would be. A good record on near claims does not make a far
+claim true, and a poor one does not make it false.
+
+## The degenerate-forecaster audit
+
+Each measure is first run against forecasters that know nothing. If one of
+them can pass a measure, the measure is not measuring foresight.
+
+`results/000-baselines.json` holds that audit: 400 simulated claims, one
+simulated world, five forecasters. The forecaster that states each event's
+true chance has a Brier skill of 0.290669. Saying yes to everything scores
+-1.06, saying no to everything -0.94, and a coin 0.0. All four share a hit
+rate of 0.485, which is why the hit rate is never read as skill on its own.
+A forecaster that puts every date 90 days too early shows a median slip of
+3.334702 months against 0.377823, and a hit rate of 0.245. This is a
+simulation; no real claim has been scored.
+
+## Status
+
+The scorer, the claim format and the audit exist. The claim table is empty.
+Claims are added one pre-registered section at a time, each with its wording
+and resolution rule in `preregistration_additions.md` before its outcome is
+looked up.
+
+## Use
+
+```
+cargo test --locked
+cargo run --locked --release -- baselines --seed 7 --n 400 --out results/<name>.json
+cargo run --locked --release -- check --claims claims/claims.tsv --as-of <YYYY-MM-DD>
+cargo run --locked --release -- score --claims claims/claims.tsv --as-of <YYYY-MM-DD> --out results/<name>.json
+```
+
+The crate has no dependencies and builds offline. The scoring date is always
+given on the command line. Results files are never overwritten.
+
+## Licence
+
+MIT.

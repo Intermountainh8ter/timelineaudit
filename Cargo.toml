@@ -1,0 +1,10 @@
+[package]
+name = "timelineaudit"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Pre-registered ledger of dated, checkable claims from AGI-timeline scenarios, scored against what happened: hit rate, timing slip and Brier skill, with degenerate-forecaster baselines."
+
+[dependencies]
+
+[workspace]

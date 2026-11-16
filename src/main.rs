@@ -1,0 +1,193 @@
+use std::process::ExitCode;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use timelineaudit::{
+    format_date, group_json, iso_utc, json_escape, parse_claims, parse_date, score, synth_claims,
+    Forecaster, Status,
+};
+
+const USAGE: &str = "timelineaudit: score dated claims from AGI-timeline scenarios against what happened
+
+USAGE:
+  timelineaudit baselines --out <results.json> [--as-of 2026-01-01] [--seed 7] [--n 400] [--resamples 2000]
+      Score five simulated forecasters on one simulated world: one that knows
+      each event's true chance, three that know nothing (always_yes,
+      always_no, coin) and one that states every date too early. Only the
+      first may show Brier skill, and only the last may show extra slip.
+
+  timelineaudit check --claims <claims.tsv> --as-of <YYYY-MM-DD>
+      Validate the claim table and print how many claims are hits, misses,
+      open and unclear. Writes nothing.
+
+  timelineaudit score --claims <claims.tsv> --as-of <YYYY-MM-DD> --out <results.json>
+                      [--seed 7] [--resamples 2000] [--license <licence of the table>]
+      Score the claim table. Columns, tab-separated:
+      id source class made_on due_on prob outcome url
+      (see docs/PREREGISTRATION.md). --as-of is required: the scoring date is
+      never taken from the clock, so the result reproduces.
+";
+
+struct Args(Vec<String>);
+
+impl Args {
+    fn value(&self, flag: &str) -> Option<&str> {
+        let i = self.0.iter().position(|a| a == flag)?;
+        self.0.get(i + 1).map(String::as_str)
+    }
+    fn required(&self, flag: &str) -> Result<&str, String> {
+        self.value(flag)
+            .ok_or_else(|| format!("{flag} is required\n\n{USAGE}"))
+    }
+    fn number(&self, flag: &str, default: u64) -> Result<u64, String> {
+        match self.value(flag) {
+            None => Ok(default),
+            Some(v) => v
+                .parse()
+                .map_err(|_| format!("{flag} needs a whole number, got `{v}`")),
+        }
+    }
+}
+
+fn provenance(started: u64, seed: u64, wall_s: f64, sources: &str) -> String {
+    let command = std::env::args().collect::<Vec<_>>().join(" ");
+    format!(
+        "  \"provenance\": {{\"started_at\": \"{}\", \"seeds\": [{}], \"command\": \"{}\", \"hardware\": \"{} {}\", \"wall_s\": {:.3}, \"data_sources\": {}}}",
+        iso_utc(started),
+        seed,
+        json_escape(&command),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        wall_s,
+        sources
+    )
+}
+
+fn read_claims(args: &Args) -> Result<(Vec<timelineaudit::Claim>, i64, String), String> {
+    let path = args.required("--claims")?.to_string();
+    let as_of = parse_date(args.required("--as-of")?)?;
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("read {path}: {e}"))?;
+    let claims = parse_claims(&text, as_of).map_err(|e| format!("{path}: {e}"))?;
+    Ok((claims, as_of, path))
+}
+
+fn run() -> Result<(), String> {
+    let argv: Vec<String> = std::env::args().skip(1).collect();
+    let Some(cmd) = argv.first().cloned() else {
+        return Err(USAGE.into());
+    };
+    let args = Args(argv);
+
+    if cmd == "check" {
+        let (claims, as_of, path) = read_claims(&args)?;
+        let count = |s: Status| claims.iter().filter(|c| c.status(as_of) == s).count();
+        println!(
+            "{path}: {} claims as of {}: {} hit, {} miss, {} open, {} unclear",
+            claims.len(),
+            format_date(as_of),
+            count(Status::Hit),
+            count(Status::Miss),
+            count(Status::Open),
+            count(Status::Unclear)
+        );
+        return Ok(());
+    }
+
+    let out = args.required("--out")?.to_string();
+    let seed = args.number("--seed", 7)?;
+    let resamples = args.number("--resamples", 2000)? as usize;
+    let started = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let clock = Instant::now();
+
+    let body = match cmd.as_str() {
+        "baselines" => {
+            let n = args.number("--n", 400)? as usize;
+            let as_of = parse_date(args.value("--as-of").unwrap_or("2026-01-01"))?;
+            let mut blocks = Vec::new();
+            for f in Forecaster::ALL {
+                // One seed for every forecaster: they face the same world.
+                let claims = synth_claims(f, n, seed, as_of);
+                let overall = &score(&claims, as_of, resamples, seed)[0];
+                blocks.push(format!("    \"{}\": {}", f.name(), group_json(overall)));
+            }
+            format!(
+                "  \"kind\": \"baselines\",\n  \"simulated\": true,\n  \"as_of\": \"{}\",\n  \"n_claims\": {},\n  \"resamples\": {},\n  \"forecasters\": {{\n{}\n  }},\n{}",
+                format_date(as_of),
+                n,
+                resamples,
+                blocks.join(",\n"),
+                provenance(
+                    started,
+                    seed,
+                    clock.elapsed().as_secs_f64(),
+                    "[{\"url\": \"synthetic: generated by this command from the seed\", \"license\": \"MIT\"}]"
+                )
+            )
+        }
+        "score" => {
+            let (claims, as_of, path) = read_claims(&args)?;
+            if claims.is_empty() {
+                return Err(format!("{path}: no claims to score"));
+            }
+            let groups = score(&claims, as_of, resamples, seed);
+            let blocks: Vec<String> = groups
+                .iter()
+                .map(|g| format!("    \"{}\": {}", json_escape(&g.name), group_json(g)))
+                .collect();
+            let license = args.value("--license").unwrap_or("see each claim's source");
+            let mut urls: Vec<&str> = claims.iter().map(|c| c.url.as_str()).collect();
+            urls.sort_unstable();
+            urls.dedup();
+            let sources: Vec<String> = urls
+                .iter()
+                .map(|u| {
+                    format!(
+                        "{{\"url\": \"{}\", \"license\": \"{}\"}}",
+                        json_escape(u),
+                        json_escape(license)
+                    )
+                })
+                .collect();
+            format!(
+                "  \"kind\": \"score\",\n  \"simulated\": false,\n  \"claims_file\": \"{}\",\n  \"as_of\": \"{}\",\n  \"n_claims\": {},\n  \"resamples\": {},\n  \"groups\": {{\n{}\n  }},\n{}",
+                json_escape(&path),
+                format_date(as_of),
+                claims.len(),
+                resamples,
+                blocks.join(",\n"),
+                provenance(
+                    started,
+                    seed,
+                    clock.elapsed().as_secs_f64(),
+                    &format!("[{}]", sources.join(", "))
+                )
+            )
+        }
+        other => return Err(format!("unknown command `{other}`\n\n{USAGE}")),
+    };
+
+    if std::path::Path::new(&out).exists() {
+        return Err(format!(
+            "{out} already exists; results files are never overwritten"
+        ));
+    }
+    if let Some(dir) = std::path::Path::new(&out).parent() {
+        if !dir.as_os_str().is_empty() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+        }
+    }
+    std::fs::write(&out, format!("{{\n{body}\n}}\n")).map_err(|e| format!("write {out}: {e}"))?;
+    println!("wrote {out}");
+    Ok(())
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::from(2)
+        }
+    }
+}
