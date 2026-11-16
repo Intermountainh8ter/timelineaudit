@@ -26,3 +26,14 @@ Simulated; no real claim is used. One simulated world of 400 claims (seed 7, as-
 - Falsifier: excludes_zero_rate at n=100 below 0.80, or the rate at n=20 not below the rate at n=100, at seed 7.
 - Command: `cargo run --locked -q --release -- power-brier --seed 7 --n 400 --sizes 20,50,100 --draws 200 --boot 1000 --out results/274-power-brier.json`
 - Limit: draws come from one finite world, so they overlap and are not independent; a statement about the simulated world only, and about the Brier measure only, not any real claim set.
+
+## 2026-11-16T16:50:19Z brier-null proposal:cb64c5c42a9bcdd0bd9676efc7c37e0d0f86fea053e0a4dee60c7d2b8b7fcf56
+
+Simulated; no real claim is used. The world is the one used by power-brier (400 claims, seed 7, as-of 2026-01-01, outcomes from `synth_claims`), but each claim's stated probability is replaced by a uniform random draw on [0, 1] independent of the outcome. For each size n in 20, 50, 100 the command draws n resolved claims without replacement, 200 times, and computes the 1000-resample percentile interval on Brier skill against the 0.5 coin (the interval used by `score`). `excludes_zero_rate` is the share of draws whose interval lower end is above zero.
+
+- Hypothesis: for a forecaster whose stated probabilities are random and independent of each event's outcome, the share of 200 simulated claim sets whose interval lower end is above zero is at most 0.05 at each of 20, 50 and 100 claims, so the power-brier rates are not an artefact of the interval method.
+- Metric: `/brier_null/by_n/100/excludes_zero_rate`.
+- Expected: at or below 0.05 at n=100 (and at 20 and 50).
+- Falsifier: excludes_zero_rate above 0.05 at any of the three sizes at seed 7.
+- Command: `cargo run --locked -q --release -- brier-null --seed 7 --n 400 --sizes 20,50,100 --draws 200 --boot 1000 --out results/275-brier-null.json`
+- Limit: draws come from one finite world and overlap; a statement about the simulated world and the Brier measure only, not any real claim set.

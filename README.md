@@ -65,6 +65,16 @@ and 0.975 at 100. Draws overlap, so they are not independent. This is a
 simulation; it sets a rough minimum claim count for the Brier measure and
 says nothing about any real claim set.
 
+## The null audit
+
+`results/275-brier-null.json` repeats the power audit for a forecaster whose
+stated probabilities are random draws independent of the outcome. The
+interval on Brier skill has a lower end above zero in 0.0 of draws at 20, 50
+and 100 claims, with median skill of -0.429369, -0.46325 and -0.441922. The
+power rates above are therefore not produced by the interval method alone.
+This is a simulation, one finite world, and says nothing about any real claim
+set.
+
 ## Status
 
 The scorer, the claim format and the audit exist. The claim table is empty.

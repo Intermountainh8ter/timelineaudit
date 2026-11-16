@@ -757,6 +757,20 @@ pub fn power_brier(
     })
 }
 
+/// Replace every stated probability with a uniform random draw independent
+/// of the outcome: a forecaster with no foresight and no fixed answer.
+pub fn randomise_probs(claims: &[Claim], seed: u64) -> Vec<Claim> {
+    let mut rng = Rng::new(seed ^ 0x5bd1_e995);
+    claims
+        .iter()
+        .map(|c| {
+            let mut c = c.clone();
+            c.prob = Some(rng.unit());
+            c
+        })
+        .collect()
+}
+
 // ---------------------------------------------------------------- JSON
 
 fn num(v: f64) -> String {
