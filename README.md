@@ -113,3 +113,7 @@ given on the command line. Results files are never overwritten.
 ## Licence
 
 MIT.
+
+## The date-reading audit
+
+`results/287-slack-sensitivity.json` scores the same 400 simulated claims with the stated date and with the stated date plus 30, 90 and 180 days. The hit rate moves from 0.485 to 0.5175, 0.575 and 0.66, and the number of miss verdicts that become hits is 13, 36 and 70. Which reading of a date is used can move a score as much as the thing scored. This is a simulation; no real claim has been scored under a window.

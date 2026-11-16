@@ -63,3 +63,14 @@ Not checkable (counted, not scored): items 1, 3, 5 (already true on made_on or r
 ## 2026-11-16T17:07:14Z real-claims-first-lookup proposal:62a639b0be78e2cdd52f3523073dc288dc3a3727d9218b44732f5abe4f8eb364
 
 Outcome lookups, rules unchanged. `ai2027-flop-1e27`: Epoch AI notable-models CSV (https://epoch.ai/data/notable_ai_models.csv, 1094 rows, latest publication date 2026-11-10): the largest estimate published on or before 2025-12-31 is 5.0e26 FLOP (Grok 4, 2025-07-09); the only entry at 9.4e26 (GPT-6 Astra, 2026-09-03) is later and below 1e27. No qualifying model: outcome `-`, overdue, counted as a miss. `ai2027-market-30pct` and `ai2027-dc-protest` are due 2026-12-31, after the as-of date, so outcome `-` (open); the protest lookup was one failed web search and no report was found, so it is not evidence either way. Expected consequence under the pre-registered stop rule: fewer than 5 resolved claims, result inconclusive.
+
+## 2026-11-16T18:54:46Z slack-sensitivity proposal:0d1870a505249f636217fc4ab6a27ffb0a0e6985eb33c9e7c25f095a30ecca85
+
+Motivation: the authors of the scenario say 2027 was a mode and not a median, so a dated claim can be scored under more than one reading of its date. This section fixes a SIMULATED check of how much the reading matters, before any real claim is scored under a window.
+
+- Hypothesis: on the 400-claim simulated world (seed 7, calibrated forecaster, as-of 2026-01-01), widening the on-time window from the stated date to stated date plus 90 days turns between 20 and 40 miss verdicts into hits.
+- Metric: `/sensitivity/by_slack_days/90/miss_to_hit_count`.
+- Expected: at least 20 and at most 40 (about 30 expected from a delay uniform on 1 to 600 days).
+- Falsifier: the count at 90 days slack below 20 or above 40 at seed 7, or the count not non-decreasing across slack 0, 30, 90, 180.
+- Command: `cargo run --locked -q --release -- slack-sensitivity --seed 7 --n 400 --slacks 0,30,90,180 --as-of 2026-01-01 --out results/287-slack-sensitivity.json`
+- Limit: a statement about one simulated world and the date-reading rule only; no real claim is scored.

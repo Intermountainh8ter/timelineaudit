@@ -791,6 +791,70 @@ fn pair(ci: (f64, f64)) -> String {
     format!("[{}, {}]", num(ci.0), num(ci.1))
 }
 
+// ---------------------------------------------------------------- slack sensitivity
+
+/// Verdict counts when the on-time window is the stated date plus `slack_days`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SlackRow {
+    pub slack_days: i64,
+    pub hits: usize,
+    pub misses: usize,
+    pub open: usize,
+    pub hit_rate: f64,
+    /// Claims that are a miss at slack 0 and a hit at this slack.
+    pub miss_to_hit_count: usize,
+    /// Claims that are a miss at slack 0 and still undecided at this slack.
+    pub miss_to_open_count: usize,
+}
+
+fn status_with_slack(c: &Claim, as_of: i64, slack: i64) -> Status {
+    let mut shifted = c.clone();
+    shifted.due_on += slack;
+    shifted.status(as_of)
+}
+
+/// Score the same claims under each slack. Unclear claims are never scored.
+pub fn slack_sensitivity(claims: &[Claim], as_of: i64, slacks: &[i64]) -> Vec<SlackRow> {
+    slacks
+        .iter()
+        .map(|&slack| {
+            let (mut hits, mut misses, mut open) = (0, 0, 0);
+            let (mut m2h, mut m2o) = (0, 0);
+            for c in claims {
+                let now = status_with_slack(c, as_of, slack);
+                let base = status_with_slack(c, as_of, 0);
+                match now {
+                    Status::Hit => hits += 1,
+                    Status::Miss => misses += 1,
+                    Status::Open => open += 1,
+                    Status::Unclear => {}
+                }
+                if base == Status::Miss {
+                    match now {
+                        Status::Hit => m2h += 1,
+                        Status::Open => m2o += 1,
+                        _ => {}
+                    }
+                }
+            }
+            let resolved = hits + misses;
+            SlackRow {
+                slack_days: slack,
+                hits,
+                misses,
+                open,
+                hit_rate: if resolved == 0 {
+                    0.0
+                } else {
+                    hits as f64 / resolved as f64
+                },
+                miss_to_hit_count: m2h,
+                miss_to_open_count: m2o,
+            }
+        })
+        .collect()
+}
+
 pub fn json_escape(s: &str) -> String {
     let mut o = String::with_capacity(s.len() + 2);
     for c in s.chars() {
