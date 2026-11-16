@@ -75,6 +75,14 @@ power rates above are therefore not produced by the interval method alone.
 This is a simulation, one finite world, and says nothing about any real claim
 set.
 
+## The aggregation audit
+
+`results/294-aggregation-audit.json` draws 15 resolved claims from the same
+kind of simulated world, 200 times. The median absolute gap between the
+claim-pooled hit rate and the unweighted mean of per-class hit rates is
+0.05. Which unit is averaged can move a headline hit rate. This is a
+simulation; no real claim set was aggregated.
+
 ## First real claims
 
 `results/278-real-claims-first.json` scores the claims entered from the five

@@ -74,3 +74,14 @@ Motivation: the authors of the scenario say 2027 was a mode and not a median, so
 - Falsifier: the count at 90 days slack below 20 or above 40 at seed 7, or the count not non-decreasing across slack 0, 30, 90, 180.
 - Command: `cargo run --locked -q --release -- slack-sensitivity --seed 7 --n 400 --slacks 0,30,90,180 --as-of 2026-01-01 --out results/287-slack-sensitivity.json`
 - Limit: a statement about one simulated world and the date-reading rule only; no real claim is scored.
+
+## 2026-11-16T19:39:38Z aggregation-audit proposal:cfa866f28e0909f60388bef844657272574a62dde3e260b8558b4c91523dd5fd
+
+Motivation: a headline hit rate can be pooled over claims or averaged over classes, and the two differ when classes have uneven counts. This section fixes a SIMULATED check of how far apart they sit on small draws, before any real claim set is aggregated both ways.
+
+- Hypothesis: on the 400-claim simulated world (seed 7, calibrated forecaster, as-of 2026-01-01), for 200 draws of 15 resolved claims without replacement, the median over draws of the absolute difference between the pooled hit rate and the unweighted mean of per-class hit rates (classes present in the draw) is at least 0.02.
+- Metric: `/aggregation/median_abs_gap`.
+- Expected: at least 0.02 (range 0.02 to 0.2; about 0.04 expected from uneven class counts of about 2.5 claims per class).
+- Falsifier: median_abs_gap below 0.02 at seed 7.
+- Command: `cargo run --locked -q --release -- aggregation-audit --seed 7 --n 400 --pick 15 --draws 200 --as-of 2026-01-01 --out results/294-aggregation-audit.json`
+- Limit: a statement about one simulated world and the aggregation unit only; no real claim is scored.

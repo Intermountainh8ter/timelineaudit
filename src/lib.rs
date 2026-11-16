@@ -691,6 +691,54 @@ pub fn selection_audit(
     })
 }
 
+/// Draw `pick` resolved claims without replacement `draws` times and report
+/// the median absolute gap between the claim-pooled hit rate and the
+/// unweighted mean of per-class hit rates (classes present in the draw).
+/// Returns `None` if fewer than `pick` claims are resolved.
+pub fn aggregation_audit(
+    claims: &[Claim],
+    as_of: i64,
+    pick: usize,
+    draws: usize,
+    seed: u64,
+) -> Option<f64> {
+    let resolved: Vec<&Claim> = claims
+        .iter()
+        .filter(|c| matches!(c.status(as_of), Status::Hit | Status::Miss))
+        .collect();
+    if pick == 0 || resolved.len() < pick {
+        return None;
+    }
+    let mut rng = Rng::new(seed);
+    let mut gaps = Vec::with_capacity(draws);
+    for _ in 0..draws {
+        let mut idx: Vec<usize> = (0..resolved.len()).collect();
+        for i in 0..pick {
+            let j = i + rng.below(resolved.len() - i);
+            idx.swap(i, j);
+        }
+        let mut per_class: Vec<(usize, usize)> = vec![(0, 0); CLASSES.len()];
+        let mut hits = 0usize;
+        for &i in &idx[..pick] {
+            let c = resolved[i];
+            let k = CLASSES.iter().position(|x| *x == c.class).unwrap_or(0);
+            per_class[k].1 += 1;
+            if c.status(as_of) == Status::Hit {
+                per_class[k].0 += 1;
+                hits += 1;
+            }
+        }
+        let rates: Vec<f64> = per_class
+            .iter()
+            .filter(|(_, n)| *n > 0)
+            .map(|(h, n)| *h as f64 / *n as f64)
+            .collect();
+        let class_mean = rates.iter().sum::<f64>() / rates.len() as f64;
+        gaps.push((hits as f64 / pick as f64 - class_mean).abs());
+    }
+    Some(median(&mut gaps))
+}
+
 // ---------------------------------------------------------------- power of the Brier measure
 
 /// How often the bootstrap interval on Brier skill excludes zero for claim
