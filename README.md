@@ -151,3 +151,13 @@ lead claims resolve at 1.0 (137 claims, 0 open) and long-lead claims at
 resolved only. A lead-time comparison on a young claim set is therefore
 mostly a comparison of how much of each bin is still open. This is a
 simulation, one finite world, and says nothing about any real claim set.
+
+## The Kaplan-Meier slip audit
+
+`results/455-km-slip.json` takes the 400-claim simulated world with claims
+made 450 days before the as-of date. For long-lead claims the naive median
+slip over claims that happened is -3.449692 months, against 1.281314 months
+from a Kaplan-Meier median that treats claims not yet happened as
+right-censored. Naive minus censoring-aware is -4.731006 months. Dropping
+open claims biases the slip early. This is a simulation, one finite world,
+and says nothing about any real claim set.

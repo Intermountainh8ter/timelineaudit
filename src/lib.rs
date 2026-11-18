@@ -1103,3 +1103,113 @@ pub fn lead_audit_censored(claims: &[Claim], as_of: i64) -> Vec<LeadRow> {
         })
         .collect()
 }
+
+// ---------------------------------------------------------------- km slip
+
+/// Naive and Kaplan-Meier median slip for one lead bin.
+#[derive(Debug, Clone, PartialEq)]
+pub struct KmRow {
+    pub bin: &'static str,
+    pub claims: usize,
+    pub events: usize,
+    pub censored: usize,
+    /// Median over occurred claims only; NaN if none.
+    pub naive_median_months: f64,
+    /// Kaplan-Meier median with open and overdue claims right-censored; NaN
+    /// when survival never reaches one half.
+    pub km_median_months: f64,
+}
+
+/// Kaplan-Meier median of (time, is_event) pairs; NaN if undefined.
+pub fn km_median(obs: &[(f64, bool)]) -> f64 {
+    let mut v: Vec<(f64, bool)> = obs.to_vec();
+    v.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0)
+            .expect("no NaN in a time")
+            .then(b.1.cmp(&a.1))
+    });
+    let mut at_risk = v.len() as f64;
+    let mut surv = 1.0;
+    let mut i = 0;
+    while i < v.len() {
+        let t = v[i].0;
+        let mut deaths = 0.0;
+        let mut total = 0.0;
+        while i < v.len() && v[i].0 == t {
+            if v[i].1 {
+                deaths += 1.0;
+            }
+            total += 1.0;
+            i += 1;
+        }
+        if deaths > 0.0 {
+            surv *= 1.0 - deaths / at_risk;
+            if surv <= 0.5 {
+                return t;
+            }
+        }
+        at_risk -= total;
+    }
+    f64::NAN
+}
+
+/// Per lead bin (short, long): naive median over occurred claims versus a
+/// Kaplan-Meier median where claims that have not happened by as-of are
+/// censored at as-of minus due date.
+pub fn km_slip(claims: &[Claim], as_of: i64) -> Vec<KmRow> {
+    [("short", true), ("long", false)]
+        .iter()
+        .map(|&(bin, short)| {
+            let mut obs: Vec<(f64, bool)> = Vec::new();
+            for c in claims.iter().filter(|c| c.is_short_lead() == short) {
+                match c.outcome {
+                    Outcome::Occurred(d) => {
+                        obs.push(((d - c.due_on) as f64 / DAYS_PER_MONTH, true))
+                    }
+                    Outcome::NotYet => {
+                        obs.push(((as_of - c.due_on) as f64 / DAYS_PER_MONTH, false))
+                    }
+                    Outcome::Unclear => {}
+                }
+            }
+            let mut ev: Vec<f64> = obs.iter().filter(|o| o.1).map(|o| o.0).collect();
+            KmRow {
+                bin,
+                claims: obs.len(),
+                events: ev.len(),
+                censored: obs.len() - ev.len(),
+                naive_median_months: median(&mut ev),
+                km_median_months: km_median(&obs),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod km_tests {
+    use super::*;
+
+    #[test]
+    fn km_median_without_censoring_is_lower_median() {
+        let obs = [(1.0, true), (2.0, true), (3.0, true), (4.0, true)];
+        assert_eq!(km_median(&obs), 2.0);
+    }
+
+    #[test]
+    fn km_median_moves_up_with_early_censoring() {
+        let obs = [
+            (1.0, true),
+            (1.5, false),
+            (2.0, false),
+            (3.0, true),
+            (4.0, true),
+        ];
+        assert_eq!(km_median(&obs), 3.0);
+    }
+
+    #[test]
+    fn km_median_undefined_when_survival_stays_high() {
+        let obs = [(1.0, true), (2.0, false), (3.0, false), (4.0, false)];
+        assert!(km_median(&obs).is_nan());
+    }
+}

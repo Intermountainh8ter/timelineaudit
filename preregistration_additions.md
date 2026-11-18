@@ -107,3 +107,14 @@ Motivation: the earlier lead-audit run placed every due date before its as-of da
 - Falsifier: a long-minus-short resolved share above -0.2 at seed 7.
 - Command: `cargo run --locked -q --release -- lead-audit-censored --seed 7 --n 400 --as-of 2025-09-01 --out results/452-lead-censored.json`
 - Limit: a statement about one simulated world and the lead-time split only; the world differs from the 1100-day world used by other audits. No real claim is scored.
+
+## 2026-11-18T22:39:12Z km-slip proposal:98cc4481bcc8b388ccc029925f1f939d0b78071cf0af3269bf07815fb55e072b
+
+Motivation: a slip estimate that drops open claims is biased when events are still pending. This section fixes a SIMULATED check of how far a naive median over resolved long-lead claims sits from a Kaplan-Meier median that treats open and overdue-never-happened claims as right-censored at as-of minus due date.
+
+- Hypothesis: on the 400-claim simulated world (seed 7, calibrated forecaster, claims made 450 days before the as-of date 2025-09-01), the naive median slip over resolved long-lead claims (lead over 365 days; occurred claims only) is lower than the censoring-aware Kaplan-Meier median slip by at least 0.5 months.
+- Metric: `/bias/long_naive_minus_km_median_months` (naive minus censoring-aware).
+- Expected: at most -0.5 months (range -24 to -0.5).
+- Falsifier: a long-lead naive-minus-censoring-aware median above -0.5 months at seed 7. An undefined Kaplan-Meier median (survival never reaches one half) is reported as null and does not support the hypothesis.
+- Command: `cargo run --locked -q --release -- km-slip --seed 7 --n 400 --as-of 2025-09-01 --out results/455-km-slip.json`
+- Limit: a statement about one simulated world and the slip estimator only. No real claim is scored.
