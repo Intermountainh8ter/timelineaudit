@@ -1300,3 +1300,59 @@ pub fn pace_snapshot(claims: &[Claim], as_of: i64) -> PaceSnapshot {
         naive_median_months: median(&mut ev),
     }
 }
+
+// ---------------------------------------------------------------- group gap
+
+/// Result of the planted-gap check on resolved claims only.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GroupGap {
+    pub fast_resolved: usize,
+    pub slow_resolved: usize,
+    pub fast_median_months: f64,
+    pub slow_median_months: f64,
+    pub planted_gap_months: f64,
+    pub measured_gap_months: f64,
+    pub recovery_error_months: f64,
+}
+
+/// Simulate `n` claims split evenly between a fast group (planted slip
+/// `+planted` months) and a slow group (`-planted`), each with zero-mean
+/// triangular noise of half-width 6 months, made `made_days` before `as_of`
+/// with leads of 60 to 700 days. A claim is resolved only if its event date
+/// is on or before `as_of`. The gap is fast minus slow median slip over
+/// resolved claims, compared with `2 * planted`.
+pub fn group_gap(n: usize, seed: u64, as_of: i64, made_days: i64, planted: f64) -> GroupGap {
+    let mut rng = Rng::new(seed);
+    let made_on = as_of - made_days;
+    let mut fast = Vec::new();
+    let mut slow = Vec::new();
+    for i in 0..n {
+        let lead = 60 + rng.below(641) as i64;
+        let due = made_on + lead;
+        let noise = (rng.unit() + rng.unit() - 1.0) * 6.0;
+        let (bias, bucket) = if i % 2 == 0 {
+            (planted, &mut fast)
+        } else {
+            (-planted, &mut slow)
+        };
+        let slip = bias + noise;
+        let event = due + (slip * DAYS_PER_MONTH).round() as i64;
+        if event <= as_of {
+            bucket.push((event - due) as f64 / DAYS_PER_MONTH);
+        }
+    }
+    let (fr, sr) = (fast.len(), slow.len());
+    let fm = median(&mut fast);
+    let sm = median(&mut slow);
+    let measured = fm - sm;
+    let planted_gap = 2.0 * planted;
+    GroupGap {
+        fast_resolved: fr,
+        slow_resolved: sr,
+        fast_median_months: fm,
+        slow_median_months: sm,
+        planted_gap_months: planted_gap,
+        measured_gap_months: measured,
+        recovery_error_months: (measured - planted_gap).abs(),
+    }
+}

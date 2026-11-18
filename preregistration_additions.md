@@ -140,3 +140,14 @@ Motivation: a self-graded pace figure can move between snapshots only because mo
 - Falsifier: a late-minus-early naive median slip below 0.5 months at seed 7, or a resolved share that does not rise between the two as-of dates.
 - Command: `cargo run --locked -q --release -- pace-snapshots --seed 7 --n 400 --as-of-early 2025-03-01 --as-of 2025-09-01 --out results/458-pace-snapshots.json`
 - Limit: a statement about one simulated world and the naive estimator only. No real claim is scored.
+
+## 2026-11-18T23:22:20Z group-gap proposal:7cdebb032be5c14017e9f72ed10ac78acf8a4675430649d8b02933e62d6d687d
+
+Motivation: a fast-versus-slow comparison of timing slip is only trustworthy if the instrument recovers a known gap when claims are still open. This section fixes a SIMULATED check with a planted gap.
+
+- Hypothesis: in a simulated world (seed 7, 400 claims, half per group, claims made 450 days before the as-of date 2025-09-01) where the fast group's dates are planted 2.0 months too early (slip +2.0) and the slow group's 2.0 months too late (slip -2.0), the difference in median slip (fast minus slow) measured on resolved claims only recovers the planted 4.0-month gap to within 1.0 month in absolute error.
+- Metric: `/groups/gap_recovery_error` (absolute months between measured and planted gap).
+- Expected: at most 1.0 month (range 0.0 to 1.0).
+- Falsifier: an absolute gap recovery error above 1.0 month at seed 7.
+- Command: `cargo run --release --locked -- group-gap --seed 7 --n 400 --as-of 2025-09-01 --out results/464-group-gap.json`
+- Limit: a statement about one simulated world and the resolved-only estimator. Claims whose event falls after the as-of date are open and dropped. No real claim or source is scored.

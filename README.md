@@ -180,3 +180,12 @@ claims moves from -3.613963 to -2.628337 months, a shift of 0.985626 months,
 although the world did not change. A self-graded pace figure can move between
 snapshots only because more claims resolved. This is a simulation and scores
 no real claim.
+
+## The group-gap audit
+
+`results/464-group-gap.json` plants a 4.000000-month slip gap between a fast
+group and a slow group in 400 simulated claims, drops the claims still open at
+the as-of date, and measures the gap on the rest. The measured gap is
+3.531828 months, an absolute recovery error of 0.468172 months, from 112
+resolved fast claims and 150 resolved slow claims. This is a simulation, one
+seed; it says nothing about any real source.
