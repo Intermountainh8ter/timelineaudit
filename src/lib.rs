@@ -1262,3 +1262,41 @@ pub fn class_mix(
     }
     Some(out)
 }
+
+// ---------------------------------------------------------- pace snapshots
+
+/// One as-of snapshot of a fixed world: share resolved and the naive median
+/// slip over occurred claims only.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaceSnapshot {
+    pub claims: usize,
+    pub resolved_share: f64,
+    pub events: usize,
+    /// Median over occurred claims only; NaN if none.
+    pub naive_median_months: f64,
+}
+
+/// Score the same claims at one as-of date.
+pub fn pace_snapshot(claims: &[Claim], as_of: i64) -> PaceSnapshot {
+    let open = claims
+        .iter()
+        .filter(|c| c.status(as_of) == Status::Open)
+        .count();
+    let mut ev: Vec<f64> = claims
+        .iter()
+        .filter_map(|c| match c.outcome {
+            Outcome::Occurred(d) => Some((d - c.due_on) as f64 / DAYS_PER_MONTH),
+            _ => None,
+        })
+        .collect();
+    PaceSnapshot {
+        claims: claims.len(),
+        resolved_share: if claims.is_empty() {
+            f64::NAN
+        } else {
+            (claims.len() - open) as f64 / claims.len() as f64
+        },
+        events: ev.len(),
+        naive_median_months: median(&mut ev),
+    }
+}

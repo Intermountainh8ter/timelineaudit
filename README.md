@@ -170,3 +170,13 @@ or 0.9. The median over draws of the pooled median slip is 0.459959 months,
 -0.164271 months and -0.542094 months, a range of 1.002053 months. Which
 classes are in a sample moves the pooled slip. This is a simulation, one
 finite world, and says nothing about any real claim set.
+
+## The pace-snapshot audit
+
+`results/458-pace-snapshots.json` scores one fixed simulated 400-claim world
+at two as-of dates. The share of claims resolved rises from 0.2375 on
+2025-03-01 to 0.58 on 2025-09-01, and the naive median slip over occurred
+claims moves from -3.613963 to -2.628337 months, a shift of 0.985626 months,
+although the world did not change. A self-graded pace figure can move between
+snapshots only because more claims resolved. This is a simulation and scores
+no real claim.

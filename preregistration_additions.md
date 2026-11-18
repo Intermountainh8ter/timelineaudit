@@ -129,3 +129,14 @@ Motivation: a pooled median slip depends on which claim classes are in the sampl
 - Falsifier: a range below 0.5 months at seed 7.
 - Command: `cargo run --locked -q --release -- class-mix --seed 7 --n 400 --as-of 2026-01-01 --draws 200 --out results/456-class-mix.json`
 - Limit: a statement about one simulated world and the pooling convention only; the generator assigns classes by index, so any class effect is whatever the generator produces. No real claim is scored.
+
+## 2026-11-18T22:52:13Z pace-snapshots proposal:79d89e4d7845ff334ee8690a6ee5c9c3a8cda00e767571fbb21b645e8865b6f6
+
+Motivation: a self-graded pace figure can move between snapshots only because more claims have resolved. This section fixes a SIMULATED check on one unchanging world scored at an early and a late as-of date.
+
+- Hypothesis: on one fixed 400-claim simulated world (seed 7, calibrated forecaster, claims made 450 days before the late as-of date 2025-09-01), the naive median slip over resolved occurred claims at the late as-of date exceeds the same estimate at the early as-of date 2025-03-01 by at least 0.5 months, while the resolved share also rises, although the world is unchanged.
+- Metric: `/pace_censoring/naive_late_minus_early_median_months` (late minus early).
+- Expected: at least 0.5 months (range 0.5 to 24).
+- Falsifier: a late-minus-early naive median slip below 0.5 months at seed 7, or a resolved share that does not rise between the two as-of dates.
+- Command: `cargo run --locked -q --release -- pace-snapshots --seed 7 --n 400 --as-of-early 2025-03-01 --as-of 2025-09-01 --out results/458-pace-snapshots.json`
+- Limit: a statement about one simulated world and the naive estimator only. No real claim is scored.
