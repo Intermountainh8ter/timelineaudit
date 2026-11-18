@@ -189,3 +189,7 @@ the as-of date, and measures the gap on the rest. The measured gap is
 3.531828 months, an absolute recovery error of 0.468172 months, from 112
 resolved fast claims and 150 resolved slow claims. This is a simulation, one
 seed; it says nothing about any real source.
+
+## The ceiling audit
+
+`results/471-ceiling-doubling.json` fits a doubling time to a simulated horizon series whose true doubling time is 6 months, clipped at suite ceilings. With the cap at 0.25 of the top horizon the fit overstates the doubling time by 2.172805 months; the uncapped fit is off by -0.00149 months. The bias at the lowest cap exceeds the uncapped bias by 2.174295 months. This is a simulation of one series and says nothing about any measured horizon.

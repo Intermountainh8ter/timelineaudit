@@ -151,3 +151,14 @@ Motivation: a fast-versus-slow comparison of timing slip is only trustworthy if 
 - Falsifier: an absolute gap recovery error above 1.0 month at seed 7.
 - Command: `cargo run --release --locked -- group-gap --seed 7 --n 400 --as-of 2025-09-01 --out results/464-group-gap.json`
 - Limit: a statement about one simulated world and the resolved-only estimator. Claims whose event falls after the as-of date are open and dropped. No real claim or source is scored.
+
+## 2026-11-18T23:51:52Z ceiling-doubling proposal:0f6f09116eba6da13b5db2b3bdc0e2ac7a417759e77ac136d97bb5b938f5bdcf
+
+Motivation: a fitted doubling time depends on the task suite, so a suite that saturates can change a pace estimate with no change in capability. This section fixes a SIMULATED check of that bias with a known true doubling time.
+
+- Hypothesis: in a simulated exponential horizon series with a true doubling time of 6 months (37 monthly points, log2 noise of half-width 0.1), a log-linear fit on observations clipped at a ceiling inside the observed range overstates the doubling time; the bias at the lowest cap level (0.25 of the top horizon) exceeds the uncapped bias by at least 1.0 months, and the uncapped fit has absolute bias under 0.1 months.
+- Metric: `/metrics/doubling_time_bias_months_at_cap` (lowest-cap bias minus uncapped bias, months).
+- Expected: at least 1.0 months (range 1.0 to 24).
+- Falsifier: that value below 1.0 months at seed 7, or an uncapped absolute bias of 0.1 months or more.
+- Command: `cargo run --locked --release -- ceiling-doubling --seed 7 --true-doubling-months 6 --caps 0.25,0.5,0.75,1.0 --out results/471-ceiling-doubling.json`
+- Limit: a statement about one simulated series and an ordinary-least-squares log fit only. No real benchmark or measured horizon is scored.

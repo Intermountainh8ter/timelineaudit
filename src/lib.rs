@@ -1356,3 +1356,70 @@ pub fn group_gap(n: usize, seed: u64, as_of: i64, made_days: i64, planted: f64) 
         recovery_error_months: (measured - planted_gap).abs(),
     }
 }
+
+// ---------------------------------------------------------------- ceiling doubling
+
+/// Doubling-time fit on a series capped at one suite ceiling.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CeilingFit {
+    pub cap_fraction: f64,
+    pub capped_points: usize,
+    pub fitted_doubling_months: f64,
+    pub bias_months: f64,
+}
+
+/// Result of the ceiling check: the uncapped fit and one fit per cap.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CeilingDoubling {
+    pub true_doubling_months: f64,
+    pub uncapped_doubling_months: f64,
+    pub uncapped_bias_months: f64,
+    pub fits: Vec<CeilingFit>,
+}
+
+/// Least-squares slope of `y` on `x`.
+fn ols_slope(x: &[f64], y: &[f64]) -> f64 {
+    let n = x.len() as f64;
+    let mx = x.iter().sum::<f64>() / n;
+    let my = y.iter().sum::<f64>() / n;
+    let sxy: f64 = x.iter().zip(y).map(|(a, b)| (a - mx) * (b - my)).sum();
+    let sxx: f64 = x.iter().map(|a| (a - mx) * (a - mx)).sum();
+    sxy / sxx
+}
+
+/// Simulate a horizon series `h(t) = 2^(t / true_doubling)` at monthly points
+/// `t = 0..=36`, with zero-mean triangular noise of half-width 0.1 in log2.
+/// For each cap fraction `f`, observations are clipped at `f` times the largest
+/// noiseless horizon (the suite ceiling); a log-linear fit then estimates the
+/// doubling time. Bias is fitted minus true doubling time, in months.
+pub fn ceiling_doubling(seed: u64, true_doubling: f64, caps: &[f64]) -> CeilingDoubling {
+    let mut rng = Rng::new(seed);
+    let t: Vec<f64> = (0..=36).map(|m| m as f64).collect();
+    let log_h: Vec<f64> = t
+        .iter()
+        .map(|&m| m / true_doubling + (rng.unit() + rng.unit() - 1.0) * 0.1)
+        .collect();
+    let top = 36.0 / true_doubling;
+    let uncapped = 1.0 / ols_slope(&t, &log_h);
+    let fits = caps
+        .iter()
+        .map(|&f| {
+            let ceiling = top + f.log2();
+            let y: Vec<f64> = log_h.iter().map(|&v| v.min(ceiling)).collect();
+            let capped = log_h.iter().filter(|&&v| v > ceiling).count();
+            let d = 1.0 / ols_slope(&t, &y);
+            CeilingFit {
+                cap_fraction: f,
+                capped_points: capped,
+                fitted_doubling_months: d,
+                bias_months: d - true_doubling,
+            }
+        })
+        .collect();
+    CeilingDoubling {
+        true_doubling_months: true_doubling,
+        uncapped_doubling_months: uncapped,
+        uncapped_bias_months: uncapped - true_doubling,
+        fits,
+    }
+}
