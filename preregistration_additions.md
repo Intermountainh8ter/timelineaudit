@@ -85,3 +85,14 @@ Motivation: a headline hit rate can be pooled over claims or averaged over class
 - Falsifier: median_abs_gap below 0.02 at seed 7.
 - Command: `cargo run --locked -q --release -- aggregation-audit --seed 7 --n 400 --pick 15 --draws 200 --as-of 2026-01-01 --out results/294-aggregation-audit.json`
 - Limit: a statement about one simulated world and the aggregation unit only; no real claim is scored.
+
+## 2026-11-18T22:07:01Z convention-audit proposal:ad382c57568b829baec43d42d1168122fdd2b70a8489f2dd02cb1f484ddc00ff
+
+Motivation: a median slip can keep overdue never-happened claims as censored lower bounds or drop them, and the two conventions differ. This section fixes a SIMULATED check of how far apart they sit per class, before any real claim set is scored both ways.
+
+- Hypothesis: on the 400-claim simulated world (seed 7, calibrated forecaster, as-of 2026-01-01), dropping overdue never-happened claims from the slip calculation lowers the capability-class median slip by at least 0.5 months relative to keeping them as censored lower bounds.
+- Metric: `/by_class/capability/median_slip_gap_months` (keep-censored minus drop).
+- Expected: at least 0.5 months (range 0.5 to 24).
+- Falsifier: a capability-class gap below 0.5 months at seed 7.
+- Command: `cargo run --locked -q --release -- convention-audit --seed 7 --n 400 --as-of 2026-01-01 --out results/448-censor-convention.json`
+- Limit: a statement about one simulated world and the slip convention only; the share of never-happened claims in the simulation is whatever the generator produces, not a fixed 30 percent. No real claim is scored.

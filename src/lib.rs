@@ -990,3 +990,50 @@ mod tests {
         assert_eq!(iso_utc(1_700_000_000), "2023-11-14T22:13:20Z");
     }
 }
+
+// ---------------------------------------------------------------- convention audit
+
+/// Median slip of one class under two conventions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConventionRow {
+    pub class: String,
+    pub resolved: usize,
+    pub censored: usize,
+    /// Median over all slips, censored ones entering as their lower bound.
+    pub keep_median_months: f64,
+    /// Median over uncensored slips only.
+    pub drop_median_months: f64,
+    /// Keep minus drop. NaN when either median is undefined.
+    pub gap_months: f64,
+}
+
+/// Per-class median slip with overdue never-happened claims kept as lower
+/// bounds versus dropped.
+pub fn convention_audit(claims: &[Claim], as_of: i64) -> Vec<ConventionRow> {
+    CLASSES
+        .iter()
+        .map(|&class| {
+            let slips: Vec<Slip> = claims
+                .iter()
+                .filter(|c| c.class == class)
+                .filter_map(|c| c.slip(as_of))
+                .collect();
+            let mut keep: Vec<f64> = slips.iter().map(|s| s.months).collect();
+            let mut drop: Vec<f64> = slips
+                .iter()
+                .filter(|s| !s.censored)
+                .map(|s| s.months)
+                .collect();
+            let k = median(&mut keep);
+            let d = median(&mut drop);
+            ConventionRow {
+                class: class.to_string(),
+                resolved: slips.len(),
+                censored: slips.iter().filter(|s| s.censored).count(),
+                keep_median_months: k,
+                drop_median_months: d,
+                gap_months: k - d,
+            }
+        })
+        .collect()
+}

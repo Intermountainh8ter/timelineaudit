@@ -125,3 +125,16 @@ MIT.
 ## The date-reading audit
 
 `results/287-slack-sensitivity.json` scores the same 400 simulated claims with the stated date and with the stated date plus 30, 90 and 180 days. The hit rate moves from 0.485 to 0.5175, 0.575 and 0.66, and the number of miss verdicts that become hits is 13, 36 and 70. Which reading of a date is used can move a score as much as the thing scored. This is a simulation; no real claim has been scored under a window.
+
+## The convention audit
+
+`results/448-censor-convention.json` scores 400 simulated claims per class
+under two slip conventions: overdue never-happened claims kept as lower
+bounds, or dropped. The pre-registered hypothesis, a capability-class gap of
+at least 0.5 months, was not supported: the capability class has 0 censored
+claims of 67 resolved, so the gap is 0.0 months. The deployment class gap is
+1.412731 months (5 censored of 67) and the other class gap is 1.494867
+months (3 censored of 66). The convention matters where overdue
+never-happened claims sit, which is a property of the world and not of the
+rule. This is a simulation, one finite world, and says nothing about any
+real claim set.
