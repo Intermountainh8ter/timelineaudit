@@ -162,3 +162,14 @@ Motivation: a fitted doubling time depends on the task suite, so a suite that sa
 - Falsifier: that value below 1.0 months at seed 7, or an uncapped absolute bias of 0.1 months or more.
 - Command: `cargo run --locked --release -- ceiling-doubling --seed 7 --true-doubling-months 6 --caps 0.25,0.5,0.75,1.0 --out results/471-ceiling-doubling.json`
 - Limit: a statement about one simulated series and an ordinary-least-squares log fit only. No real benchmark or measured horizon is scored.
+
+## 2026-11-18T23:55:52Z revision-audit proposal:711e1d339063c21d3c80712e4ec1f516f6e6dee9523f9c924ffbe05e70bba747
+
+Motivation: no source scores forecasters' own revisions against what resolved. This section fixes a SIMULATED check that the instrument separates an informative revision from a noise-only one.
+
+- Hypothesis: in a simulated world (seed 7, 400 claims resolved by the as-of date, true outcome probability uniform on [0,1]) where the prior forecast is a weak noisy signal of that probability and the revised forecast sees a less noisy partial signal, the revised forecast's Brier skill against the coin exceeds the prior's by at least 0.05, a noise-only revision (prior plus independent noise) gains no more than 0.02, and an always-0.5 responder scores exactly 0.
+- Metric: `/metrics/brier_skill_revised_minus_prior` (informative reviser).
+- Expected: at least 0.05 (range 0.05 to 1.0).
+- Falsifier: that value below 0.05 at seed 7, or the noise-only gain above 0.02, or the always-0.5 skill not equal to 0.
+- Command: `cargo run --release --locked -- revision-audit --out results/472-revision-audit.json --seed 7`
+- Limit: a statement about one simulated world. No real forecast or revision is scored.

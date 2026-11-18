@@ -1423,3 +1423,48 @@ pub fn ceiling_doubling(seed: u64, true_doubling: f64, caps: &[f64]) -> CeilingD
         fits,
     }
 }
+
+// ---------------------------------------------------------------- revision audit
+
+/// Brier skill of prior, informative revision, noise-only revision and 0.5.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RevisionAudit {
+    pub n: usize,
+    pub prior_skill: f64,
+    pub revised_skill: f64,
+    pub noise_revised_skill: f64,
+    pub always_half_skill: f64,
+}
+
+fn clamp_prob(p: f64) -> f64 {
+    p.clamp(0.01, 0.99)
+}
+
+/// Simulate `n` resolved claims with true outcome probability `p` (uniform) and a
+/// drawn outcome. The prior forecast is `0.5 + 0.25 (p - 0.5)` plus triangular
+/// noise of half-width 0.2; the informative revision is `p` plus the same kind
+/// of noise; the noise-only revision is the prior plus independent noise.
+pub fn revision_audit(seed: u64, n: usize) -> RevisionAudit {
+    let mut rng = Rng::new(seed);
+    let tri = |r: &mut Rng| (r.unit() + r.unit() - 1.0) * 0.2;
+    let (mut bp, mut br, mut bn, mut bh) = (0.0, 0.0, 0.0, 0.0);
+    for _ in 0..n {
+        let p = rng.unit();
+        let y = if rng.coin(p) { 1.0 } else { 0.0 };
+        let prior = clamp_prob(0.5 + 0.25 * (p - 0.5) + tri(&mut rng));
+        let revised = clamp_prob(p + tri(&mut rng));
+        let noise = clamp_prob(prior + tri(&mut rng));
+        bp += (prior - y) * (prior - y);
+        br += (revised - y) * (revised - y);
+        bn += (noise - y) * (noise - y);
+        bh += 0.25;
+    }
+    let skill = |b: f64| 1.0 - (b / n as f64) / 0.25;
+    RevisionAudit {
+        n,
+        prior_skill: skill(bp),
+        revised_skill: skill(br),
+        noise_revised_skill: skill(bn),
+        always_half_skill: skill(bh),
+    }
+}
