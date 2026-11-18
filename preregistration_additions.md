@@ -118,3 +118,14 @@ Motivation: a slip estimate that drops open claims is biased when events are sti
 - Falsifier: a long-lead naive-minus-censoring-aware median above -0.5 months at seed 7. An undefined Kaplan-Meier median (survival never reaches one half) is reported as null and does not support the hypothesis.
 - Command: `cargo run --locked -q --release -- km-slip --seed 7 --n 400 --as-of 2025-09-01 --out results/455-km-slip.json`
 - Limit: a statement about one simulated world and the slip estimator only. No real claim is scored.
+
+## 2026-11-18T22:43:04Z class-mix proposal:0486d1517f66ccd09d7b2a47d5d6c633783db97211de6c49e7758b842f578599
+
+Motivation: a pooled median slip depends on which claim classes are in the sample. This section fixes a SIMULATED check of how far the pooled median moves when the capability share of the sample is set by resampling, before any real claim set is pooled.
+
+- Hypothesis: on the 400-claim simulated world (seed 7, calibrated forecaster, as-of 2026-01-01), resampling claims with replacement (draws of 400, 200 per share, median over draws) so the capability-class share is 0.1, 0.5 or 0.9 moves the pooled median slip by at least 0.5 months between the lowest and highest share.
+- Metric: `/mix_sensitivity/pooled_range_months` (max minus min of the per-share median over draws of the pooled median slip).
+- Expected: at least 0.5 months (range 0.5 to 24).
+- Falsifier: a range below 0.5 months at seed 7.
+- Command: `cargo run --locked -q --release -- class-mix --seed 7 --n 400 --as-of 2026-01-01 --draws 200 --out results/456-class-mix.json`
+- Limit: a statement about one simulated world and the pooling convention only; the generator assigns classes by index, so any class effect is whatever the generator produces. No real claim is scored.

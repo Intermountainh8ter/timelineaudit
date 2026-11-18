@@ -1213,3 +1213,52 @@ mod km_tests {
         assert!(km_median(&obs).is_nan());
     }
 }
+
+// ---------------------------------------------------------------- class-mix sensitivity
+
+/// Median over `draws` resamples (with replacement, size `claims.len()`) of
+/// the pooled median slip, for each capability-class share in `shares`.
+/// Each resampled claim is drawn from the capability pool with probability
+/// `share`, otherwise from the other classes. Claims with no slip (open or
+/// unclear) are skipped when pooling. Returns `None` if either pool is empty.
+pub fn class_mix(
+    claims: &[Claim],
+    as_of: i64,
+    shares: &[f64],
+    draws: usize,
+    seed: u64,
+) -> Option<Vec<(f64, f64)>> {
+    let cap: Vec<Slip> = claims
+        .iter()
+        .filter(|c| c.class == "capability")
+        .filter_map(|c| c.slip(as_of))
+        .collect();
+    let other: Vec<Slip> = claims
+        .iter()
+        .filter(|c| c.class != "capability")
+        .filter_map(|c| c.slip(as_of))
+        .collect();
+    if cap.is_empty() || other.is_empty() {
+        return None;
+    }
+    let n = claims.len();
+    let mut rng = Rng::new(seed);
+    let mut out = Vec::with_capacity(shares.len());
+    for &share in shares {
+        let mut meds = Vec::with_capacity(draws);
+        for _ in 0..draws {
+            let sample: Vec<Slip> = (0..n)
+                .map(|_| {
+                    if rng.coin(share) {
+                        cap[rng.below(cap.len())]
+                    } else {
+                        other[rng.below(other.len())]
+                    }
+                })
+                .collect();
+            meds.push(median_slip(&sample).0);
+        }
+        out.push((share, median(&mut meds)));
+    }
+    Some(out)
+}

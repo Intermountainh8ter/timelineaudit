@@ -161,3 +161,12 @@ from a Kaplan-Meier median that treats claims not yet happened as
 right-censored. Naive minus censoring-aware is -4.731006 months. Dropping
 open claims biases the slip early. This is a simulation, one finite world,
 and says nothing about any real claim set.
+
+## The class-mix audit
+
+`results/456-class-mix.json` resamples the 400-claim simulated world with
+replacement, 200 draws of 400 per share, so the capability share is 0.1, 0.5
+or 0.9. The median over draws of the pooled median slip is 0.459959 months,
+-0.164271 months and -0.542094 months, a range of 1.002053 months. Which
+classes are in a sample moves the pooled slip. This is a simulation, one
+finite world, and says nothing about any real claim set.
