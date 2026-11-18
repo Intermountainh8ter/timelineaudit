@@ -564,8 +564,19 @@ impl Forecaster {
 /// `n` simulated claims. The world (which events happen, and when) depends
 /// only on the seed, so every forecaster is scored on identical events.
 pub fn synth_claims(f: Forecaster, n: usize, seed: u64, as_of: i64) -> Vec<Claim> {
+    synth_claims_made_on(f, n, seed, as_of, as_of - 1100)
+}
+
+/// As [`synth_claims`] with the date the claims were made given explicitly,
+/// so the as-of date can fall inside the range of due dates.
+pub fn synth_claims_made_on(
+    f: Forecaster,
+    n: usize,
+    seed: u64,
+    as_of: i64,
+    made_on: i64,
+) -> Vec<Claim> {
     let mut rng = Rng::new(seed);
-    let made_on = as_of - 1100;
     (0..n)
         .map(|i| {
             // Every draw is made for every claim so the stream never forks.
@@ -1033,6 +1044,61 @@ pub fn convention_audit(claims: &[Claim], as_of: i64) -> Vec<ConventionRow> {
                 keep_median_months: k,
                 drop_median_months: d,
                 gap_months: k - d,
+            }
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------- lead audit (censored)
+
+/// Resolved share and median slip for one lead-time bin.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LeadRow {
+    pub bin: &'static str,
+    pub claims: usize,
+    pub open: usize,
+    pub resolved_share: f64,
+    pub censored: usize,
+    /// Median slip with overdue never-happened claims as lower bounds; NaN if none.
+    pub median_slip_months: f64,
+}
+
+/// Per lead bin (short, long): share of claims resolved (hit or miss, not
+/// open) and median slip. Open claims count as right-censored: they stay in
+/// the denominator and carry no slip.
+pub fn lead_audit_censored(claims: &[Claim], as_of: i64) -> Vec<LeadRow> {
+    [("short", true), ("long", false)]
+        .iter()
+        .map(|&(bin, short)| {
+            let sel: Vec<&Claim> = claims
+                .iter()
+                .filter(|c| c.is_short_lead() == short)
+                .collect();
+            let open = sel
+                .iter()
+                .filter(|c| c.status(as_of) == Status::Open)
+                .count();
+            let mut slips: Vec<f64> = sel
+                .iter()
+                .filter_map(|c| c.slip(as_of))
+                .map(|s| s.months)
+                .collect();
+            let censored = sel
+                .iter()
+                .filter_map(|c| c.slip(as_of))
+                .filter(|s| s.censored)
+                .count();
+            LeadRow {
+                bin,
+                claims: sel.len(),
+                open,
+                resolved_share: if sel.is_empty() {
+                    f64::NAN
+                } else {
+                    (sel.len() - open) as f64 / sel.len() as f64
+                },
+                censored,
+                median_slip_months: median(&mut slips),
             }
         })
         .collect()

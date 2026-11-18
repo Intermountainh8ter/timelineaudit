@@ -138,3 +138,16 @@ months (3 censored of 66). The convention matters where overdue
 never-happened claims sit, which is a property of the world and not of the
 rule. This is a simulation, one finite world, and says nothing about any
 real claim set.
+
+## The censored lead audit
+
+`results/452-lead-censored.json` scores 400 simulated claims made 450 days
+before the as-of date 2025-09-01, so long-lead due dates fall after it and
+those claims can stay open. The pre-registered hypothesis, a long-minus-short
+resolved share of at most -0.2, was supported: the share is -0.638783. Short
+lead claims resolve at 1.0 (137 claims, 0 open) and long-lead claims at
+0.361217 (263 claims, 168 open). Median slip is -0.558522 months (short) and
+-2.135524 months (long), the long figure computed on the claims that have
+resolved only. A lead-time comparison on a young claim set is therefore
+mostly a comparison of how much of each bin is still open. This is a
+simulation, one finite world, and says nothing about any real claim set.

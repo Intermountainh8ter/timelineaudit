@@ -96,3 +96,14 @@ Motivation: a median slip can keep overdue never-happened claims as censored low
 - Falsifier: a capability-class gap below 0.5 months at seed 7.
 - Command: `cargo run --locked -q --release -- convention-audit --seed 7 --n 400 --as-of 2026-01-01 --out results/448-censor-convention.json`
 - Limit: a statement about one simulated world and the slip convention only; the share of never-happened claims in the simulation is whatever the generator produces, not a fixed 30 percent. No real claim is scored.
+
+## 2026-11-18T22:28:17Z lead-audit-censored proposal:816798b410620be8a7bd56efd9dc014303747f41ab2f2e137e8ecba0495aca22
+
+Motivation: the earlier lead-audit run placed every due date before its as-of date, so no claim stayed open. This section fixes a SIMULATED check with claims made 450 days before the as-of date, so long-lead due dates fall after it, and open claims are counted as right-censored rather than dropped.
+
+- Hypothesis: on a 400-claim simulated world (seed 7, calibrated forecaster, claims made 450 days before the as-of date 2025-09-01), the share of claims resolved (hit or miss, not open) is lower for long-lead claims (lead over 365 days) than for short-lead ones by at least 0.2.
+- Metric: `/long_minus_short_resolved_share` (long minus short).
+- Expected: at most -0.2 (range -1.0 to -0.2).
+- Falsifier: a long-minus-short resolved share above -0.2 at seed 7.
+- Command: `cargo run --locked -q --release -- lead-audit-censored --seed 7 --n 400 --as-of 2025-09-01 --out results/452-lead-censored.json`
+- Limit: a statement about one simulated world and the lead-time split only; the world differs from the 1100-day world used by other audits. No real claim is scored.
