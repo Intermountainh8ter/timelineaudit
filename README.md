@@ -218,3 +218,13 @@ strict-rule count spreads by 144 across dates; adding 90 days of slack moves
 the count by at most 36 at any one date, a ratio of 4.0. The snapshot date
 moved the count more than the counting rule. This is a simulation; no real
 tracker is scored.
+
+## The window audit
+
+`results/481-window-spread.json` simulates 500 frontiers with one constant
+doubling time of 210 days and triangular noise of half-width 0.3 in log2
+horizon, then fits doubling time from four start windows (months 0, 12, 24
+and 36). The median range across windows is 3.12176 days, and the share of
+draws with a range of at least 20 days is 0.0. The pre-registered hypothesis
+of at least 20 days is refuted for this setup. This is a simulation with
+correct exponential form; no real measured horizon is scored.

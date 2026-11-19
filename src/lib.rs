@@ -1749,3 +1749,88 @@ pub fn snapshot_count(
         })
         .collect()
 }
+
+// ---------------------------------------------------------------- window spread
+
+/// Spread of fitted doubling time across start-year windows.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WindowSpread {
+    pub median_range_days: f64,
+    pub median_abs_error_days: Vec<f64>,
+    pub share_range_at_least_20: f64,
+}
+
+/// Simulate `reps` frontiers `log2 h(t) = t / true_doubling_days * 30.4375`
+/// over 72 months with triangular noise of half-width `noise`. Points are
+/// every 6 months before month 36 and every 2 months from month 36 on. For
+/// each start month in `starts` fit a line to all points from that month to
+/// the end and convert the slope to a doubling time in days. The range is max
+/// minus min across windows, per replicate.
+pub fn window_spread(
+    seed: u64,
+    true_doubling_days: f64,
+    noise: f64,
+    reps: usize,
+    starts: &[usize],
+) -> WindowSpread {
+    let days_per_month = 30.4375;
+    let times: Vec<usize> = (0..=72)
+        .filter(|&m| if m < 36 { m % 6 == 0 } else { m % 2 == 0 })
+        .collect();
+    let mut rng = Rng::new(seed);
+    let mut ranges = Vec::with_capacity(reps);
+    let mut errs: Vec<Vec<f64>> = vec![Vec::new(); starts.len()];
+    for _ in 0..reps {
+        let y: Vec<f64> = times
+            .iter()
+            .map(|&m| {
+                m as f64 * days_per_month / true_doubling_days
+                    + (rng.unit() + rng.unit() - 1.0) * noise
+            })
+            .collect();
+        let mut est = Vec::with_capacity(starts.len());
+        for (k, &s) in starts.iter().enumerate() {
+            let xs: Vec<f64> = times
+                .iter()
+                .filter(|&&m| m >= s)
+                .map(|&m| m as f64)
+                .collect();
+            let ys = &y[times.len() - xs.len()..];
+            let slope = ols_slope(&xs, ys);
+            let d = days_per_month / slope;
+            errs[k].push((d - true_doubling_days).abs());
+            est.push(d);
+        }
+        let mx = est.iter().cloned().fold(f64::MIN, f64::max);
+        let mn = est.iter().cloned().fold(f64::MAX, f64::min);
+        ranges.push(mx - mn);
+    }
+    let median = |v: &[f64]| {
+        let mut e = v.to_vec();
+        e.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        if e.len() % 2 == 1 {
+            e[e.len() / 2]
+        } else {
+            (e[e.len() / 2 - 1] + e[e.len() / 2]) / 2.0
+        }
+    };
+    WindowSpread {
+        median_range_days: median(&ranges),
+        median_abs_error_days: errs.iter().map(|e| median(e)).collect(),
+        share_range_at_least_20: ranges.iter().filter(|&&r| r >= 20.0).count() as f64 / reps as f64,
+    }
+}
+
+#[cfg(test)]
+mod window_spread_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_noise_free_has_no_spread() {
+        let a = window_spread(7, 210.0, 0.3, 100, &[0, 12, 24, 36]);
+        assert_eq!(a, window_spread(7, 210.0, 0.3, 100, &[0, 12, 24, 36]));
+        let z = window_spread(7, 210.0, 0.0, 10, &[0, 12, 24, 36]);
+        assert!(z.median_range_days < 1e-6);
+        assert!(a.median_range_days > 0.0);
+    }
+}

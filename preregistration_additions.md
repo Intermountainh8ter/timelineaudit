@@ -217,3 +217,14 @@ Motivation: third-party trackers count confirmed predictions differently on diff
 - Falsifier: that ratio below 1.0 at seed 7.
 - Command: `cargo run --locked --release -- snapshot-count --seed 7 --n 400 --out results/476-snapshot-count.json`
 - Limit: a statement about one simulated world. No real tracker, claim or grading is scored.
+
+## 2026-11-19T00:34:00Z window-spread proposal:9f33c680b665742585039eb090235d9873bb7774756a56511551b03fea005e3f
+
+Motivation: a measured doubling time is said to depend on the window chosen. This section fixes a SIMULATED check of how much the start year alone spreads the estimate when the truth is one constant doubling time.
+
+- Hypothesis: on a simulated frontier with one constant true doubling time, noisy measurements and sparse early points, fitting doubling time from windows that start at four different years gives a range (max minus min) of at least 20 days across windows in the median seed, so a window-dependent doubling time alone is not evidence of acceleration.
+- Metric: `/window_spread/doubling_days_range`.
+- Expected: median over seeds of the range is at least 20 days (range 20 to 400).
+- Falsifier: a median doubling-days range below 20 days across the four start windows.
+- Command: `cargo run --release --locked -- window-spread --seed 7 --out results/481-window-spread.json`
+- Limit: one simulated series family with correct exponential form and an ordinary-least-squares fit. No real benchmark or measured horizon is scored.
