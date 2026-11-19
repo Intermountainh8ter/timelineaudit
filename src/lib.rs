@@ -2560,3 +2560,94 @@ mod flagged_runs_tests {
         assert!((a[0].spread - 1.0).abs() < 1e-9 || a[0].valid_suites == 0);
     }
 }
+
+// ---------------------------------------------------------------- resolver error
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolverErrorRow {
+    pub error_rate: f64,
+    pub median_skill: f64,
+    pub median_shift: f64,
+    pub draws: usize,
+}
+
+/// SIMULATED. Per draw, generate calibrated claims, keep the first `n`
+/// resolved as of `as_of`, flip each outcome whose uniform draw falls below
+/// the error rate (draws shared across rates), and score Brier skill of the
+/// stated true chances against the coin. Shift is skill minus skill at zero
+/// flips, medianed over draws.
+pub fn resolver_error(
+    seed: u64,
+    as_of: i64,
+    n: usize,
+    draws: usize,
+    rates: &[f64],
+) -> Vec<ResolverErrorRow> {
+    let mut skills: Vec<Vec<f64>> = vec![Vec::new(); rates.len()];
+    let mut shifts: Vec<Vec<f64>> = vec![Vec::new(); rates.len()];
+    for d in 0..draws {
+        let claims = synth_claims(
+            Forecaster::Calibrated,
+            4 * n,
+            seed.wrapping_add(d as u64),
+            as_of,
+        );
+        let resolved: Vec<(f64, bool)> = claims
+            .iter()
+            .filter_map(|c| match (c.status(as_of), c.prob) {
+                (Status::Hit, Some(p)) => Some((p, true)),
+                (Status::Miss, Some(p)) => Some((p, false)),
+                _ => None,
+            })
+            .take(n)
+            .collect();
+        if resolved.len() < n {
+            continue;
+        }
+        let mut rng = Rng::new(seed ^ 0x7e57_ab1e ^ (d as u64).wrapping_mul(0x9E37_79B9));
+        let us: Vec<f64> = (0..n).map(|_| rng.unit()).collect();
+        let skill = |rate: f64| {
+            let b: f64 = resolved
+                .iter()
+                .zip(&us)
+                .map(|(&(p, o), &u)| {
+                    let o = if u < rate { !o } else { o };
+                    let o = if o { 1.0 } else { 0.0 };
+                    (p - o) * (p - o)
+                })
+                .sum::<f64>()
+                / n as f64;
+            1.0 - b / COIN_BRIER
+        };
+        let base = skill(0.0);
+        for (i, &r) in rates.iter().enumerate() {
+            let sk = skill(r);
+            skills[i].push(sk);
+            shifts[i].push(sk - base);
+        }
+    }
+    rates
+        .iter()
+        .enumerate()
+        .map(|(i, &r)| ResolverErrorRow {
+            error_rate: r,
+            draws: skills[i].len(),
+            median_skill: median(&mut skills[i]),
+            median_shift: median(&mut shifts[i]),
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod resolver_error_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_zero_rate_has_no_shift_and_full_flip_hurts() {
+        let as_of = parse_date("2026-01-01").unwrap();
+        let a = resolver_error(7, as_of, 50, 10, &[0.0, 1.0]);
+        assert_eq!(a, resolver_error(7, as_of, 50, 10, &[0.0, 1.0]));
+        assert_eq!(a[0].median_shift, 0.0);
+        assert!(a[1].median_shift < 0.0);
+    }
+}

@@ -281,3 +281,7 @@ and says nothing about any real benchmark.
 ## The flagged-runs audit
 
 `results/490-flagged-runs.json` simulates 8 models and 100 tasks, 200 suites per setting, and flags a share of the newest model's successes as illegitimate. Scored as counted, as failure, or dropped, the median fitted 50% horizon of that model differs across rules by a max/min ratio of 1.0 at a flagged share of 0 and 53.97484 at 0.5 (counted 254.555547 minutes, failure 4.716189, dropped 130.102285). This is a simulation with a correct logistic form; no real run or flag is scored.
+
+## The resolver-error audit
+
+`results/491-resolver-error.json` draws 500 sets of 50 resolved claims from a simulated world and flips a share of outcomes at random for the forecaster that states each event's true chance. Median Brier skill against the coin is 0.269191 with no flips and 0.208353 at a flip share of 0.05, a shift of -0.050605, smaller in magnitude than the pre-registered 0.10. At a flip share of 0.1 the shift is -0.097544. This is a simulation with independent errors; no real resolver is scored.

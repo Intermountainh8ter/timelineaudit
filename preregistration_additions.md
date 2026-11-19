@@ -305,3 +305,14 @@ Motivation: the estimate of a frontier model's time horizon depends on how runs 
 - Falsifier: a ratio below 1.5 at flagged share 0.5, or a ratio outside 1 +/- 0.02 at flagged share 0.
 - Command: `cargo run --release --locked -- flagged-runs --seed 7 --out results/490-flagged-runs.json`
 - Limit: one simulated suite with correct logistic form and a specific flagging model; no real run or flag is scored.
+
+## 2026-11-19T01:20:43Z resolver-error proposal:360b7fbb265225670ae414f876b686f47e9ceaf8d6a2cf58342fcb0ba074f987
+
+Motivation: Bosse et al. report an automated question resolver at about 95% accuracy with no independent audit. This section fixes a SIMULATED check of how much random resolver error lowers Brier skill for a forecaster that states each event's true chance.
+
+- Hypothesis: in a simulated world (seed 7) where the forecaster states each event's true chance, flipping 5% of resolved outcomes at random lowers median Brier skill against the coin by at least 0.10 relative to zero flips, over 500 seeded draws of 50 resolved claims. Setup: each draw generates 200 calibrated synthetic claims, keeps the first 50 resolved as of 2026-01-01, and flips each outcome when a per-claim uniform draw falls below the error rate (the same draws serve every rate, so flips are nested). Rates 0, 0.01, 0.02, 0.05, 0.1. The shift is the median over draws of skill at the rate minus skill at zero flips.
+- Metric: `/brier_skill_shift_at_resolver_error` (the shift at rate 0.05).
+- Expected: a decrease of at least 0.10 (range -1.0 to -0.10). A back-of-envelope expectation, not a result, is a smaller decrease, so a null is plausible.
+- Falsifier: a median shift above -0.10 at rate 0.05.
+- Command: `cargo run --release --locked -- resolver-error --seed 7 --out results/491-resolver-error.json`
+- Limit: the fast-versus-slow group gap named in the proposal is not computed here. Errors are independent of claim and outcome; one simulated world; no real resolver is scored.
