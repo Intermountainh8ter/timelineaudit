@@ -265,3 +265,7 @@ threshold of 0.05 at 10 tasks was not reached and the hypothesis is refuted.
 The median absolute log error of the fitted doubling time is 0.273536 at 10
 tasks and 0.040427 at 200. This is a simulation with a correct logistic form
 and says nothing about any real benchmark.
+
+## The cluster-coverage audit
+
+`results/486-cluster-coverage.json` draws 20 families of 5 tasks with a shared difficulty offset, 300 replicates and 200 bootstrap resamples per interval. At offset spread 1.0 the 95% task-level bootstrap interval covers the true 50% horizon in 0.876667 of replicates and the family-level interval in 0.92; at spread 0 they cover in 0.94 and 0.92. The pre-registered expectation of at most 0.85 for the task-level interval was not met. This is a simulation with one suite size; no real benchmark was scored.

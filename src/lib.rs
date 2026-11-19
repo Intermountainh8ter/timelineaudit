@@ -2150,3 +2150,139 @@ mod difficulty_spread_tests {
         assert!(a[1].marginal_h80 < a[0].marginal_h80);
     }
 }
+
+// ---------------------------------------------------------------- cluster coverage
+
+/// One row of the cluster-coverage audit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClusterCoverageRow {
+    pub spread: f64,
+    pub task_level_coverage: f64,
+    pub family_level_coverage: f64,
+    pub valid_replicates: usize,
+}
+
+fn percentile_interval(v: &mut [f64]) -> Option<(f64, f64)> {
+    if v.len() < 20 {
+        return None;
+    }
+    v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let n = v.len();
+    let lo = v[((n as f64) * 0.025) as usize];
+    let hi = v[(((n as f64) * 0.975) as usize).min(n - 1)];
+    Some((lo, hi))
+}
+
+/// SIMULATED. `families` families of `per_family` tasks share a log-minute
+/// offset drawn from N(0, spread^2); task log length is uniform on
+/// `[0, ln 1000]` and success is `sigmoid(ln h50 + offset - x)`, one attempt.
+/// Fit a logistic, then build 95% percentile bootstrap intervals for the
+/// log 50% horizon by resampling tasks and by resampling whole families, and
+/// report how often each covers the true `ln h50`. Unfittable replicates and
+/// resamples are skipped.
+pub fn cluster_coverage(
+    seed: u64,
+    families: usize,
+    per_family: usize,
+    reps: usize,
+    boots: usize,
+    h50: f64,
+    spreads: &[f64],
+) -> Vec<ClusterCoverageRow> {
+    let hi = 1000.0_f64.ln();
+    let ln50 = h50.ln();
+    spreads
+        .iter()
+        .map(|&spread| {
+            let mut rng = Rng::new(seed);
+            let (mut cov_t, mut cov_f, mut valid) = (0usize, 0usize, 0usize);
+            for _ in 0..reps {
+                let mut xs = Vec::new();
+                let mut ys = Vec::new();
+                for _ in 0..families {
+                    let off = spread * gauss(&mut rng);
+                    for _ in 0..per_family {
+                        let x = rng.unit() * hi;
+                        let p = 1.0 / (1.0 + (-(ln50 + off - x)).exp());
+                        xs.push(x);
+                        ys.push(rng.coin(p));
+                    }
+                }
+                let n = xs.len();
+                match logistic_fit(&xs, &ys) {
+                    Some((_, b)) if b < 0.0 => {}
+                    _ => continue,
+                }
+                let (mut bt, mut bf) = (Vec::new(), Vec::new());
+                for _ in 0..boots {
+                    let (mut rx, mut ry) = (Vec::with_capacity(n), Vec::with_capacity(n));
+                    for _ in 0..n {
+                        let i = ((rng.unit() * n as f64) as usize).min(n - 1);
+                        rx.push(xs[i]);
+                        ry.push(ys[i]);
+                    }
+                    if let Some((a, b)) = logistic_fit(&rx, &ry) {
+                        if b < 0.0 {
+                            bt.push(-a / b);
+                        }
+                    }
+                    rx.clear();
+                    ry.clear();
+                    for _ in 0..families {
+                        let f = ((rng.unit() * families as f64) as usize).min(families - 1);
+                        for j in f * per_family..(f + 1) * per_family {
+                            rx.push(xs[j]);
+                            ry.push(ys[j]);
+                        }
+                    }
+                    if let Some((a, b)) = logistic_fit(&rx, &ry) {
+                        if b < 0.0 {
+                            bf.push(-a / b);
+                        }
+                    }
+                }
+                if let (Some((tl, th)), Some((fl, fh))) =
+                    (percentile_interval(&mut bt), percentile_interval(&mut bf))
+                {
+                    valid += 1;
+                    if tl <= ln50 && ln50 <= th {
+                        cov_t += 1;
+                    }
+                    if fl <= ln50 && ln50 <= fh {
+                        cov_f += 1;
+                    }
+                }
+            }
+            let d = valid.max(1) as f64;
+            ClusterCoverageRow {
+                spread,
+                task_level_coverage: cov_t as f64 / d,
+                family_level_coverage: cov_f as f64 / d,
+                valid_replicates: valid,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod cluster_coverage_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_bounded() {
+        let a = cluster_coverage(7, 10, 5, 6, 40, 60.0, &[0.0, 1.0]);
+        assert_eq!(a, cluster_coverage(7, 10, 5, 6, 40, 60.0, &[0.0, 1.0]));
+        for r in &a {
+            assert!((0.0..=1.0).contains(&r.task_level_coverage));
+            assert!((0.0..=1.0).contains(&r.family_level_coverage));
+        }
+    }
+
+    #[test]
+    fn percentile_interval_needs_enough_draws() {
+        assert!(percentile_interval(&mut [1.0, 2.0]).is_none());
+        let mut v: Vec<f64> = (0..100).map(|i| i as f64).collect();
+        let (lo, hi) = percentile_interval(&mut v).unwrap();
+        assert!(lo < hi);
+    }
+}

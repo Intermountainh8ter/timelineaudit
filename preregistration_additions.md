@@ -261,3 +261,14 @@ Motivation: a trend slope is only as stable as the number of tasks behind each m
 - Falsifier: the share at 10 tasks below 0.05, or the share at 200 tasks at least 0.01.
 - Command: `cargo run --release --locked -- tasks-per-model --seed 7 --out results/485-tasks-per-model.json`
 - Limit: one simulated frontier with correct logistic form and a maximum-likelihood per-model fit followed by ordinary least squares on log horizon. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:55:58Z cluster-coverage proposal:da887ea192ad613a506f8c3dd36880364f484456031724eeeae71e1100343552
+
+Motivation: METR's hierarchical bootstrap over task families, tasks and attempts is documented but no known-truth coverage check of it was found. This section fixes a SIMULATED check of how often task-level and family-level bootstrap intervals cover a known horizon when tasks in a family share a difficulty offset.
+
+- Hypothesis: with 20 families of 5 tasks, a true 50% horizon of 60 minutes, 300 replicates per setting and 200 bootstrap resamples, when the family offset spread (sd of log-minutes) is 1.0 the 95% task-level bootstrap interval covers the true horizon in at most 0.85 of replicates, while the family-level bootstrap interval covers in at least 0.90; at spread 0 both cover in at least 0.90.
+- Metric: `/task_level_coverage_at_max_clustering`.
+- Expected: at most 0.85 at spread 1.0 (range 0.0 to 0.85).
+- Falsifier: task-level coverage at spread 1.0 above 0.85, or family-level coverage at spread 1.0 below 0.90, or either coverage at spread 0 below 0.90.
+- Command: `cargo run --release --locked -- cluster-coverage --seed 7 --out results/486-cluster-coverage.json`
+- Limit: one simulated suite with correct logistic form (slope 1.0 per natural-log unit), one attempt per task, percentile intervals, maximum-likelihood fit. No real benchmark or measured horizon is scored.
