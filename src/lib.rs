@@ -2472,3 +2472,91 @@ mod baseline_censoring_tests {
         }
     }
 }
+
+// ---------------------------------------------------------------- flagged runs
+
+/// One row of the flagged-runs audit: median fitted 50% horizon (minutes) of
+/// the newest model under each scoring rule, and the max/min ratio.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FlaggedRunsRow {
+    pub flagged_share: f64,
+    pub median_counted: f64,
+    pub median_failure: f64,
+    pub median_dropped: f64,
+    pub spread: f64,
+    pub valid_suites: usize,
+}
+
+/// SIMULATED. Models 6 months apart on a frontier with `true_doubling`
+/// months (4 minutes at month 0); tasks log-uniform 1 to 1000 minutes; slope
+/// 1, one attempt. Each success of the newest model is flagged with
+/// probability `share`; it is scored as counted, as failure, or its task is
+/// dropped, and the newest model's horizon is refitted under each rule.
+pub fn flagged_runs(
+    seed: u64,
+    true_doubling: f64,
+    n_models: usize,
+    tasks: usize,
+    reps: usize,
+    shares: &[f64],
+) -> Vec<FlaggedRunsRow> {
+    let hi = 1000.0_f64.ln();
+    shares
+        .iter()
+        .map(|&share| {
+            let mut rng = Rng::new(seed);
+            let (mut hc, mut hf, mut hd) = (Vec::new(), Vec::new(), Vec::new());
+            for _ in 0..reps {
+                let xs: Vec<f64> = (0..tasks).map(|_| rng.unit() * hi).collect();
+                let t = 6.0 * (n_models - 1) as f64;
+                let ln50 = 4.0_f64.ln() + t / true_doubling * std::f64::consts::LN_2;
+                let (mut yc, mut yf, mut xd, mut yd) =
+                    (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+                for &x in &xs {
+                    let p = 1.0 / (1.0 + (-(ln50 - x)).exp());
+                    let y = rng.coin(p);
+                    let flagged = y && rng.coin(share);
+                    yc.push(y);
+                    yf.push(y && !flagged);
+                    if !flagged {
+                        xd.push(x);
+                        yd.push(y);
+                    }
+                }
+                let h = |x: &[f64], y: &[bool]| match logistic_fit(x, y) {
+                    Some((a, b)) if b < 0.0 => Some((-a / b).exp()),
+                    _ => None,
+                };
+                if let (Some(c), Some(f), Some(d)) = (h(&xs, &yc), h(&xs, &yf), h(&xd, &yd)) {
+                    hc.push(c);
+                    hf.push(f);
+                    hd.push(d);
+                }
+            }
+            let valid = hc.len();
+            let (mc, mf, md) = (median(&mut hc), median(&mut hf), median(&mut hd));
+            let mx = mc.max(mf).max(md);
+            let mn = mc.min(mf).min(md);
+            FlaggedRunsRow {
+                flagged_share: share,
+                median_counted: mc,
+                median_failure: mf,
+                median_dropped: md,
+                spread: mx / mn,
+                valid_suites: valid,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod flagged_runs_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_unit_spread_at_zero() {
+        let a = flagged_runs(7, 7.0, 8, 60, 6, &[0.0, 0.5]);
+        assert_eq!(a, flagged_runs(7, 7.0, 8, 60, 6, &[0.0, 0.5]));
+        assert!((a[0].spread - 1.0).abs() < 1e-9 || a[0].valid_suites == 0);
+    }
+}

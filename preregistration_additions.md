@@ -294,3 +294,14 @@ Motivation: METR only used successful human baselines when computing task times,
 - Falsifier: a median ratio between 0.95 and 1.05 at the highest failure rate.
 - Command: `cargo run --release --locked -- baseline-censoring --seed 7 --out results/488-baseline-censoring.json`
 - Limit: one simulated suite family with correct logistic form, a specific failure model, and no real baseline or horizon is scored.
+
+## 2026-11-19T01:16:26Z flagged-runs proposal:a476fd0555f89a1d4d8634f27d54271d01e90e34306643f5f614f8588aa281d9
+
+Motivation: the estimate of a frontier model's time horizon depends on how runs flagged as cheating are scored. This section fixes a SIMULATED check of how far the fitted 50% horizon of the newest model moves across three scoring rules as the flagged share of its successes rises.
+
+- Hypothesis: in a known-truth simulation of 8 models and 100 tasks where the newest model's flagged share of successes is raised to 0.5, the ratio of the largest to the smallest median fitted 50% horizon of that model across the three scoring rules is at least 1.5, while at a flagged share of 0 it is within 1.02 of 1. Setup: true doubling 7 months, models 6 months apart (4 minutes at month 0), 100 tasks per suite with length log-uniform 1 to 1000 minutes, success drawn with log-odds slope 1.0 per natural-log unit, one attempt, 200 suites per setting, flagged shares 0, 0.1, 0.25, 0.5. Each success of the newest model is flagged independently with the share as probability. Rules: counted (flag ignored), failure (flagged success scored as failure), dropped (flagged task removed). Separable or non-decreasing fits are skipped.
+- Metric: `/horizon_spread_across_rules_at_max_flagged_share`.
+- Expected: at least 1.5 (range 1.5 to 100.0).
+- Falsifier: a ratio below 1.5 at flagged share 0.5, or a ratio outside 1 +/- 0.02 at flagged share 0.
+- Command: `cargo run --release --locked -- flagged-runs --seed 7 --out results/490-flagged-runs.json`
+- Limit: one simulated suite with correct logistic form and a specific flagging model; no real run or flag is scored.

@@ -277,3 +277,7 @@ and says nothing about any real benchmark.
 ## The baseline-censoring audit
 
 `results/488-baseline-censoring.json` draws 200 simulated suites of 100 tasks and 8 models on a frontier with a true doubling time of 7 months, takes each task's length from successful baselines only, and lets baseliner failure rise with task length. The median fitted-to-true doubling-time ratio is 0.970912 at the highest failure rate against 0.978885 with no failures, inside the pre-registered 0.95 to 1.05 band, so the hypothesis is refuted for this failure model. This is a simulation and scores no real baseline.
+
+## The flagged-runs audit
+
+`results/490-flagged-runs.json` simulates 8 models and 100 tasks, 200 suites per setting, and flags a share of the newest model's successes as illegitimate. Scored as counted, as failure, or dropped, the median fitted 50% horizon of that model differs across rules by a max/min ratio of 1.0 at a flagged share of 0 and 53.97484 at 0.5 (counted 254.555547 minutes, failure 4.716189, dropped 130.102285). This is a simulation with a correct logistic form; no real run or flag is scored.
