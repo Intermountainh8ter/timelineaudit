@@ -273,3 +273,7 @@ and says nothing about any real benchmark.
 ## The task-influence audit
 
 `results/487-task-influence.json` draws 200 simulated suites of 40 tasks for a model whose true 50% horizon is 500 minutes, with the longest task at 1000 minutes, and refits dropping each task in turn. With 2 tasks above the horizon the median largest relative shift in the fitted horizon is 0.424353; with 20 tasks above it, 0.152267. Dropping one task moves a horizon estimate much more when few long tasks anchor it. This is a simulation with a correct logistic form; no real benchmark was scored.
+
+## The baseline-censoring audit
+
+`results/488-baseline-censoring.json` draws 200 simulated suites of 100 tasks and 8 models on a frontier with a true doubling time of 7 months, takes each task's length from successful baselines only, and lets baseliner failure rise with task length. The median fitted-to-true doubling-time ratio is 0.970912 at the highest failure rate against 0.978885 with no failures, inside the pre-registered 0.95 to 1.05 band, so the hypothesis is refuted for this failure model. This is a simulation and scores no real baseline.

@@ -283,3 +283,14 @@ Motivation: swapping one task in or out of a suite with few long tasks can move 
 - Falsifier: a median max relative shift below 0.25 at k = 2, or a ratio to the k = 20 shift below 2.
 - Command: `cargo run --release --locked -- task-influence --seed 7 --out results/487-task-influence.json`
 - Limit: one simulated suite with correct logistic form and a maximum-likelihood two-parameter fit; relative shift is on the minutes scale and unbounded above. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T01:05:08Z baseline-censoring proposal:557152829ed927019491334cdf8ba28005893dde88f96fb4674bee834355bd0b
+
+Motivation: METR only used successful human baselines when computing task times, so failed baselines are dropped rather than treated as censored. This section fixes a SIMULATED check of how that choice moves a fitted doubling time when baseliner failure rises with task length.
+
+- Hypothesis: when baseliner failure chance rises with task length, taking task length from successful baselines only makes the fitted doubling time at the highest failure rate differ from the true doubling time by a median ratio of at least 1.05 (too long or too short by 5%), over 200 simulated suites. Setup: true doubling 7 months, 8 models 6 months apart (4 minutes at month 0), 100 tasks per suite with true length log-uniform 1 to 1000 minutes, 3 baseliners per task whose log time is the true log length plus N(0, 0.5^2) noise, a baseliner failing with probability fail_rate * (ln time / ln 1000) clipped to [0, 1], observed task length the geometric mean of successful baseliners' times (tasks with no success dropped), model success drawn from the true length with log-odds slope 1.0 per natural-log unit, one attempt, logistic fit of each model on observed lengths. Fail rates 0, 0.25, 0.5, 0.9; the highest is 0.9. Models with a separable or non-decreasing fit are dropped; fewer than 3 usable models makes the suite undefined.
+- Metric: `/doubling_time_bias_ratio_at_max_failure_rate`.
+- Expected: ratio at or above 1.05 or at or below 0.95 (range 1.05 to 3.0).
+- Falsifier: a median ratio between 0.95 and 1.05 at the highest failure rate.
+- Command: `cargo run --release --locked -- baseline-censoring --seed 7 --out results/488-baseline-censoring.json`
+- Limit: one simulated suite family with correct logistic form, a specific failure model, and no real baseline or horizon is scored.

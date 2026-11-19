@@ -2371,3 +2371,104 @@ mod task_influence_tests {
         }
     }
 }
+
+// ---------------------------------------------------------------- baseline censoring
+
+/// One row of the baseline-censoring audit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BaselineCensoringRow {
+    pub fail_rate: f64,
+    pub median_ratio: f64,
+    pub valid_suites: usize,
+}
+
+/// SIMULATED. `tasks` tasks with true log length uniform on `[0, ln 1000]`;
+/// each gets 3 baseliners whose log time is the true log length plus
+/// N(0, 0.5^2), failing with probability `fail_rate * ln(time)/ln(1000)`
+/// (clipped). Observed length is the geometric mean of successful baseliners'
+/// times (no success: task dropped). Models 6 months apart on a frontier with
+/// `true_doubling` months succeed on the true length (slope 1, one attempt);
+/// each is fitted on the observed lengths and ln horizon is regressed on date.
+/// Report the median fitted/true doubling-time ratio over defined suites.
+pub fn baseline_censoring(
+    seed: u64,
+    true_doubling: f64,
+    n_models: usize,
+    tasks: usize,
+    reps: usize,
+    fail_rates: &[f64],
+) -> Vec<BaselineCensoringRow> {
+    let hi = 1000.0_f64.ln();
+    fail_rates
+        .iter()
+        .map(|&fr| {
+            let mut rng = Rng::new(seed);
+            let mut ratios = Vec::new();
+            for _ in 0..reps {
+                let mut truth = Vec::with_capacity(tasks);
+                let mut obs = Vec::with_capacity(tasks);
+                for _ in 0..tasks {
+                    let x = rng.unit() * hi;
+                    let (mut sum, mut ok) = (0.0, 0usize);
+                    for _ in 0..3 {
+                        let lt = x + 0.5 * gauss(&mut rng);
+                        let pf = (fr * lt / hi).clamp(0.0, 1.0);
+                        if !rng.coin(pf) {
+                            sum += lt;
+                            ok += 1;
+                        }
+                    }
+                    truth.push(x);
+                    obs.push(if ok > 0 { Some(sum / ok as f64) } else { None });
+                }
+                let (mut ts, mut hs) = (Vec::new(), Vec::new());
+                for m in 0..n_models {
+                    let t = 6.0 * m as f64;
+                    let ln50 = 4.0_f64.ln() + t / true_doubling * std::f64::consts::LN_2;
+                    let (mut xs, mut ys) = (Vec::new(), Vec::new());
+                    for (x, o) in truth.iter().zip(&obs) {
+                        let p = 1.0 / (1.0 + (-(ln50 - x)).exp());
+                        let y = rng.coin(p);
+                        if let Some(l) = o {
+                            xs.push(*l);
+                            ys.push(y);
+                        }
+                    }
+                    if let Some((a, b)) = logistic_fit(&xs, &ys) {
+                        if b < 0.0 {
+                            ts.push(t);
+                            hs.push(-a / b);
+                        }
+                    }
+                }
+                if ts.len() < 3 {
+                    continue;
+                }
+                let slope = ols_slope(&ts, &hs);
+                if slope > 0.0 {
+                    ratios.push((std::f64::consts::LN_2 / slope) / true_doubling);
+                }
+            }
+            let valid = ratios.len();
+            BaselineCensoringRow {
+                fail_rate: fr,
+                median_ratio: median(&mut ratios),
+                valid_suites: valid,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod baseline_censoring_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_positive() {
+        let a = baseline_censoring(7, 7.0, 8, 60, 6, &[0.0, 0.9]);
+        assert_eq!(a, baseline_censoring(7, 7.0, 8, 60, 6, &[0.0, 0.9]));
+        for r in &a {
+            assert!(r.median_ratio > 0.0 || r.valid_suites == 0);
+        }
+    }
+}
