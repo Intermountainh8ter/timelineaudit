@@ -184,3 +184,14 @@ Motivation: a doubling-time fit depends on the task suite, so a suite refresh th
 - Falsifier: naive bias above -0.8 months at seed 7, or an absolute bias of 0.1 months or more for the step-term fit.
 - Command: `cargo run --locked --release -- suite-refresh --seed 7 --true-doubling-months 6 --refresh-month 18 --step-log2 1.0 --out results/473-suite-refresh.json`
 - Limit: a statement about one simulated series, a known refresh month and an ordinary-least-squares fit only. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:04:30Z pace-ratio-conventions proposal:85cc63d9835f4c99462fe6f077617a41355d200ee1dfa218e3b308606aa8e4d3
+
+Motivation: published pace ratios for quantitative AI 2027 claims differ by update, so the ratio depends on which claims and which curve are counted. This section fixes a SIMULATED check of how far three counting conventions disagree when the true ratio is known.
+
+- Hypothesis: on a simulated set of 40 quantitative claims (seed 7) with a known true pace ratio of 0.65, heavy-tailed per-claim ratios and 20% of claims graded against a wrong curve, the maximum minus minimum pace ratio across mean-of-ratios, ratio-of-sums and median-of-ratios is at least 0.10, and with no mis-graded claims the spread is smaller than with them.
+- Metric: `/convention_spread/max_minus_min_pace_ratio`.
+- Expected: at least 0.10 (range 0.10 to 1.0).
+- Falsifier: that value below 0.10 at seed 7, or a spread with mis-grading that is not larger than the spread without it.
+- Command: `cargo run --locked -q --release -- pace-ratio-conventions --seed 7 --n 40 --true-ratio 0.65 --misgrade-share 0.2 --out results/474-pace-ratio-conventions.json`
+- Limit: a statement about one simulated claim set. No real claim, grading or source is scored.

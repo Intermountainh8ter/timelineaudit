@@ -201,3 +201,7 @@ seed; it says nothing about any real source.
 ## The revision audit
 
 `results/472-revision-audit.json` scores 400 resolved simulated claims for a prior forecast, an informative revision and a noise-only revision. The informative revision's Brier skill against the coin is 0.230045 above the prior's, the noise-only revision's is -0.047939 relative to the prior's, and an always-0.5 responder scores 0.000000. This is a simulation; no real forecast or revision is scored.
+
+## The pace-ratio audit
+
+`results/474-pace-ratio-conventions.json` scores 40 simulated quantitative claims with a true pace ratio of 0.65, 6 of them graded against a wrong curve. Mean-of-ratios gives 0.76247, ratio-of-sums 0.739932 and median-of-ratios 0.542227, a spread of 0.220243; with no mis-graded claims the spread is 0.197523. The spread is mostly the convention, not the mis-grading. This is a simulation of one claim set and says nothing about any real grading.

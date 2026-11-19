@@ -1497,6 +1497,70 @@ pub fn suite_refresh(
     }
 }
 
+// ---------------------------------------------------------------- pace-ratio conventions
+
+/// Pace ratios of one simulated claim set under three counting conventions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaceConventions {
+    pub n: usize,
+    pub misgraded: usize,
+    pub mean_of_ratios: f64,
+    pub ratio_of_sums: f64,
+    pub median_of_ratios: f64,
+    pub max_minus_min: f64,
+}
+
+fn gauss(rng: &mut Rng) -> f64 {
+    let u = rng.unit().max(1e-12);
+    let v = rng.unit();
+    (-2.0 * u.ln()).sqrt() * (2.0 * std::f64::consts::PI * v).cos()
+}
+
+/// Simulate `n` quantitative claims, each with a predicted quantity
+/// (log-normal, sigma 1) and an achieved quantity equal to the predicted one
+/// times `true_ratio` times log-normal noise (sigma 0.8). A `misgrade_share`
+/// of claims is graded against a wrong curve: the achieved value is scaled by
+/// 2.5 or 0.4 at random. The same claims are scored with and without that
+/// perturbation; call again with share 0.0 for the clean spread.
+pub fn pace_ratio_conventions(
+    seed: u64,
+    n: usize,
+    true_ratio: f64,
+    misgrade_share: f64,
+) -> PaceConventions {
+    let mut rng = Rng::new(seed);
+    let mut pred = Vec::with_capacity(n);
+    let mut ach = Vec::with_capacity(n);
+    let mut flags = Vec::with_capacity(n);
+    for _ in 0..n {
+        let p = (gauss(&mut rng)).exp() * 100.0;
+        let a = p * true_ratio * (0.8 * gauss(&mut rng)).exp();
+        let bad = rng.coin(misgrade_share);
+        let up = rng.coin(0.5);
+        pred.push(p);
+        ach.push(if bad {
+            a * if up { 2.5 } else { 0.4 }
+        } else {
+            a
+        });
+        flags.push(bad);
+    }
+    let mut ratios: Vec<f64> = pred.iter().zip(&ach).map(|(p, a)| a / p).collect();
+    let mean = ratios.iter().sum::<f64>() / n.max(1) as f64;
+    let ros = ach.iter().sum::<f64>() / pred.iter().sum::<f64>();
+    let med = median(&mut ratios);
+    let hi = mean.max(ros).max(med);
+    let lo = mean.min(ros).min(med);
+    PaceConventions {
+        n,
+        misgraded: flags.iter().filter(|&&b| b).count(),
+        mean_of_ratios: mean,
+        ratio_of_sums: ros,
+        median_of_ratios: med,
+        max_minus_min: hi - lo,
+    }
+}
+
 // ---------------------------------------------------------------- revision audit
 
 /// Brier skill of prior, informative revision, noise-only revision and 0.5.
