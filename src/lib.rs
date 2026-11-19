@@ -1834,3 +1834,119 @@ mod window_spread_tests {
         assert!(a.median_range_days > 0.0);
     }
 }
+
+// ---------------------------------------------------------------- label noise
+
+/// Median log ratio of fitted to true horizons at one label-noise sigma.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LabelNoiseRow {
+    pub sigma: f64,
+    pub h50_log_ratio: f64,
+    pub h80_log_ratio: f64,
+    pub median_slope: f64,
+}
+
+/// Maximum-likelihood logistic fit `P(success) = sigmoid(a + b x)` by Newton
+/// steps. Returns `None` when the data are separable or the fit diverges.
+fn logistic_fit(x: &[f64], y: &[bool]) -> Option<(f64, f64)> {
+    let (mut a, mut b) = (0.0_f64, 0.0_f64);
+    for _ in 0..50 {
+        let (mut ga, mut gb, mut haa, mut hab, mut hbb) = (0.0, 0.0, 0.0, 0.0, 0.0);
+        for (&xi, &yi) in x.iter().zip(y) {
+            let p = 1.0 / (1.0 + (-(a + b * xi)).exp());
+            let r = if yi { 1.0 } else { 0.0 } - p;
+            let w = p * (1.0 - p);
+            ga += r;
+            gb += r * xi;
+            haa += w;
+            hab += w * xi;
+            hbb += w * xi * xi;
+        }
+        let det = haa * hbb - hab * hab;
+        if det.abs() < 1e-12 {
+            return None;
+        }
+        let da = (hbb * ga - hab * gb) / det;
+        let db = (haa * gb - hab * ga) / det;
+        a += da;
+        b += db;
+        if !a.is_finite() || !b.is_finite() || b.abs() > 50.0 {
+            return None;
+        }
+        if da.abs() < 1e-9 && db.abs() < 1e-9 {
+            return Some((a, b));
+        }
+    }
+    None
+}
+
+/// Simulate `reps` suites of `n_tasks` tasks with natural-log length uniform
+/// on `[0, ln 1000]` (minutes), true success `sigmoid(slope * (ln h50 - x))`,
+/// one attempt each. Fit a logistic of success on the noisy label
+/// `x + sigma * N(0,1)` and report the median log ratio of the fitted to the
+/// true 50% and 80% horizons, per sigma. Replicates that cannot be fitted
+/// (separable data) are skipped.
+pub fn label_noise(
+    seed: u64,
+    n_tasks: usize,
+    reps: usize,
+    true_slope: f64,
+    true_h50: f64,
+    sigmas: &[f64],
+) -> Vec<LabelNoiseRow> {
+    let hi = 1000.0_f64.ln();
+    let ln50 = true_h50.ln();
+    let ln80_true = ln50 - 4.0_f64.ln() / true_slope;
+    sigmas
+        .iter()
+        .map(|&sigma| {
+            let mut rng = Rng::new(seed);
+            let (mut r50, mut r80, mut sl) = (Vec::new(), Vec::new(), Vec::new());
+            for _ in 0..reps {
+                let mut xs = Vec::with_capacity(n_tasks);
+                let mut ys = Vec::with_capacity(n_tasks);
+                for _ in 0..n_tasks {
+                    let x = rng.unit() * hi;
+                    let p = 1.0 / (1.0 + (-true_slope * (ln50 - x)).exp());
+                    ys.push(rng.coin(p));
+                    let g = (-2.0 * (1.0 - rng.unit()).ln()).sqrt()
+                        * (2.0 * std::f64::consts::PI * rng.unit()).cos();
+                    xs.push(x + sigma * g);
+                }
+                if let Some((a, b)) = logistic_fit(&xs, &ys) {
+                    if b < 0.0 {
+                        r50.push(-a / b - ln50);
+                        r80.push((4.0_f64.ln() - a) / b - ln80_true);
+                        sl.push(-b);
+                    }
+                }
+            }
+            LabelNoiseRow {
+                sigma,
+                h50_log_ratio: median(&mut r50),
+                h80_log_ratio: median(&mut r80),
+                median_slope: median(&mut sl),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod label_noise_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_noise_attenuates() {
+        let a = label_noise(7, 200, 60, 1.0, 60.0, &[0.0, 1.0]);
+        assert_eq!(a, label_noise(7, 200, 60, 1.0, 60.0, &[0.0, 1.0]));
+        assert!(a[0].h80_log_ratio.abs() < 0.2);
+        assert!(a[1].median_slope < a[0].median_slope);
+    }
+
+    #[test]
+    fn logistic_fit_rejects_separable_data() {
+        let x: Vec<f64> = (0..200).map(|i| i as f64 / 20.0).collect();
+        let y: Vec<bool> = x.iter().map(|&v| v < 5.0).collect();
+        assert!(logistic_fit(&x, &y).is_none());
+    }
+}

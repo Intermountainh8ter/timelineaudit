@@ -228,3 +228,14 @@ Motivation: a measured doubling time is said to depend on the window chosen. Thi
 - Falsifier: a median doubling-days range below 20 days across the four start windows.
 - Command: `cargo run --release --locked -- window-spread --seed 7 --out results/481-window-spread.json`
 - Limit: one simulated series family with correct exponential form and an ordinary-least-squares fit. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:38:12Z label-noise proposal:a2b0c0c2c445d0b144c6d9d86b1d245a8d6e90feb440d927d209e67d542a99fe
+
+Motivation: METR names noise in human task-length estimates as the aspect it is least certain about, and critics say intervals treat human times as known. This section fixes a SIMULATED check of how noisy length labels bias a fitted horizon when the truth is known.
+
+- Hypothesis: in a simulated suite (seed 7, 200 tasks log-uniform in length from 1 to 1000 minutes, true logistic slope 1.0 per natural-log unit of length, true 50% horizon 60 minutes, 500 replicates, one attempt per task), multiplicative log-normal noise on the length labels attenuates the fitted slope: the median log ratio of fitted to true 80% horizon at sigma 1.0 is at most -0.3, the fitted 50% horizon stays within 0.1 in absolute log ratio, and at sigma 0 the 80% log ratio is within 0.05 of zero.
+- Metric: `/bias/h80_log_ratio_at_sigma_max`.
+- Expected: at most -0.3 (range -2.0 to -0.3).
+- Falsifier: median 80% log ratio above -0.3 at sigma 1.0, or an absolute 50% log ratio of 0.1 or more, or an absolute 80% log ratio of 0.05 or more at sigma 0.
+- Command: `cargo run --release --locked -- label-noise --seed 7 --out results/482-label-noise.json`
+- Limit: one simulated suite with a correct logistic form and a maximum-likelihood fit on the noisy labels. Sigma is in natural-log units of length. No real benchmark or measured horizon is scored.

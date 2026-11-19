@@ -228,3 +228,15 @@ and 36). The median range across windows is 3.12176 days, and the share of
 draws with a range of at least 20 days is 0.0. The pre-registered hypothesis
 of at least 20 days is refuted for this setup. This is a simulation with
 correct exponential form; no real measured horizon is scored.
+
+## The label-noise audit
+
+`results/482-label-noise.json` simulates 500 suites of 200 tasks with a true
+50% horizon of 60 minutes and a true slope of 1 per natural-log unit of
+length, then refits a logistic on length labels carrying log-normal noise.
+At sigma 1.0 the median log ratio of fitted to true 80% horizon is -0.32816
+and the median fitted slope is 0.773652; the 50% horizon log ratio is
+0.064492. At sigma 0 the 80% log ratio is 0.024324. The pre-registered
+hypothesis is supported for this setup: noisy labels understate the 80%
+horizon far more than the 50% one. This is a simulation with correct logistic
+form; no real benchmark or measured horizon is scored.
