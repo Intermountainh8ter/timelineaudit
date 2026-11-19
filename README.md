@@ -209,3 +209,12 @@ seed; it says nothing about any real source.
 ## The fit-points audit
 
 `results/475-fit-points.json` fits a doubling time to the last n of 37 monthly points in 500 simulated series with a known true doubling time of 6 months, and projects the date for a fixed level at month 60. The median absolute date error is 1.126816 months at n=6 and 0.219417 months at n=20, a ratio of 5.135492, and 1.92094 months at n=4. Coverage of the 95% interval for the fitted level is 0.948 at n=6 and 0.948 at n=20, so the interval stays near nominal while the error grows. This is a simulation with the correct model form; it says nothing about any real benchmark.
+
+## The snapshot-count audit
+
+`results/476-snapshot-count.json` counts confirmed claims in one fixed
+simulated world of 400 claims at four as-of dates six months apart. The
+strict-rule count spreads by 144 across dates; adding 90 days of slack moves
+the count by at most 36 at any one date, a ratio of 4.0. The snapshot date
+moved the count more than the counting rule. This is a simulation; no real
+tracker is scored.

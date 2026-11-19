@@ -1698,3 +1698,54 @@ mod fit_points_tests {
         assert!(a.iter().all(|r| (0.0..=1.0).contains(&r.interval_coverage)));
     }
 }
+
+// ---------------------------------------------------------------- snapshot count
+
+/// Confirmed-claim count at one as-of date under one slack rule.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SnapshotCount {
+    pub as_of: i64,
+    pub strict_hits: usize,
+    pub lenient_hits: usize,
+}
+
+/// Count hits in one fixed simulated world at each snapshot date, with zero
+/// slack and with `slack_days`. Events that happen after a snapshot are not
+/// visible at it.
+pub fn snapshot_count(
+    n: usize,
+    seed: u64,
+    made_on: i64,
+    snapshots: &[i64],
+    slack_days: i64,
+) -> Vec<SnapshotCount> {
+    // Far-future as-of so every event in the world has a known date.
+    let world = synth_claims_made_on(Forecaster::Calibrated, n, seed, made_on + 100_000, made_on);
+    snapshots
+        .iter()
+        .map(|&s| {
+            let seen: Vec<Claim> = world
+                .iter()
+                .map(|c| {
+                    let mut c = c.clone();
+                    if let Outcome::Occurred(d) = c.outcome {
+                        if d > s {
+                            c.outcome = Outcome::NotYet;
+                        }
+                    }
+                    c
+                })
+                .collect();
+            let hits = |slack: i64| {
+                seen.iter()
+                    .filter(|c| status_with_slack(c, s, slack) == Status::Hit)
+                    .count()
+            };
+            SnapshotCount {
+                as_of: s,
+                strict_hits: hits(0),
+                lenient_hits: hits(slack_days),
+            }
+        })
+        .collect()
+}

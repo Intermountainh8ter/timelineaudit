@@ -206,3 +206,14 @@ Motivation: a faster doubling-time estimate is said to rest on few recent points
 - Falsifier: median absolute error at n=6 below twice that at n=20 at seed 7.
 - Command: `cargo run --release --locked -- fit-points --out results/475-fit-points.json --seed 7`
 - Limit: a statement about one simulated series family with correct exponential form and an ordinary-least-squares fit. Interval coverage is that of the 95% confidence interval for the fitted level at month 60, with Student t critical values. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:12:50Z snapshot-count proposal:07dc6863e74ea61e061d2d3727829c785c772308a0607fcc4593e5d471250f1c
+
+Motivation: third-party trackers count confirmed predictions differently on different snapshots, so a hit count depends on the snapshot date and the counting method. This section fixes a SIMULATED check of which moves the count more.
+
+- Hypothesis: in one simulated world of 400 claims (seed 7, claims made 2024-06-01, due dates spread over time), the spread in confirmed-claim count across four as-of snapshots six months apart (2025-01-01, 2025-07-01, 2026-01-01, 2026-07-01; strict rule, zero slack) exceeds the largest strict-versus-90-day-slack count difference at any single snapshot, so the snapshot date moves a tracker's count more than its counting convention does.
+- Metric: `/snapshot_audit/count_spread_snapshot_only`.
+- Expected: the ratio of count_spread_snapshot_only to count_spread_convention_only is at least 1.5 (range 1.5 to 20.0).
+- Falsifier: that ratio below 1.0 at seed 7.
+- Command: `cargo run --locked --release -- snapshot-count --seed 7 --n 400 --out results/476-snapshot-count.json`
+- Limit: a statement about one simulated world. No real tracker, claim or grading is scored.
