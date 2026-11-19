@@ -977,6 +977,16 @@ pub fn iso_utc(secs: u64) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn suite_refresh_naive_understates_and_step_fit_recovers() {
+        let r = suite_refresh(7, 6.0, 18, 1.0);
+        assert!(r.naive_bias_months < 0.0);
+        assert!(r.step_bias_months.abs() < r.naive_bias_months.abs());
+        assert_eq!(r, suite_refresh(7, 6.0, 18, 1.0));
+        let z = suite_refresh(7, 6.0, 18, 0.0);
+        assert!((z.naive_bias_months - z.step_bias_months).abs() < 0.5);
+    }
+
     use super::*;
 
     #[test]
@@ -1421,6 +1431,69 @@ pub fn ceiling_doubling(seed: u64, true_doubling: f64, caps: &[f64]) -> CeilingD
         uncapped_doubling_months: uncapped,
         uncapped_bias_months: uncapped - true_doubling,
         fits,
+    }
+}
+
+// ---------------------------------------------------------------- suite refresh
+
+/// Naive and step-term doubling-time fits on a series with a level step.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SuiteRefresh {
+    pub true_doubling_months: f64,
+    pub naive_doubling_months: f64,
+    pub naive_bias_months: f64,
+    pub step_doubling_months: f64,
+    pub step_bias_months: f64,
+    pub step_estimate_log2: f64,
+}
+
+/// Simulate `h(t) = 2^(t / true_doubling)` at `t = 0..=36` with triangular log2
+/// noise of half-width 0.1, plus `step_log2` added to every point from
+/// `refresh_month` on. The naive fit is a log-linear slope; the step fit
+/// regresses on `t` and a step indicator (two-variable least squares).
+pub fn suite_refresh(
+    seed: u64,
+    true_doubling: f64,
+    refresh_month: usize,
+    step_log2: f64,
+) -> SuiteRefresh {
+    let mut rng = Rng::new(seed);
+    let t: Vec<f64> = (0..=36).map(|m| m as f64).collect();
+    let s: Vec<f64> = (0..=36)
+        .map(|m| if m >= refresh_month { 1.0 } else { 0.0 })
+        .collect();
+    let y: Vec<f64> = t
+        .iter()
+        .zip(&s)
+        .map(|(&m, &st)| m / true_doubling + st * step_log2 + (rng.unit() + rng.unit() - 1.0) * 0.1)
+        .collect();
+    let naive = 1.0 / ols_slope(&t, &y);
+    let n = t.len() as f64;
+    let (mt, ms, my) = (
+        t.iter().sum::<f64>() / n,
+        s.iter().sum::<f64>() / n,
+        y.iter().sum::<f64>() / n,
+    );
+    let (mut stt, mut sts, mut sss, mut sty, mut ssy) = (0.0, 0.0, 0.0, 0.0, 0.0);
+    for i in 0..t.len() {
+        let (a, b, c) = (t[i] - mt, s[i] - ms, y[i] - my);
+        stt += a * a;
+        sts += a * b;
+        sss += b * b;
+        sty += a * c;
+        ssy += b * c;
+    }
+    let det = stt * sss - sts * sts;
+    let slope = (sty * sss - ssy * sts) / det;
+    let step = (ssy * stt - sty * sts) / det;
+    let step_d = 1.0 / slope;
+    SuiteRefresh {
+        true_doubling_months: true_doubling,
+        naive_doubling_months: naive,
+        naive_bias_months: naive - true_doubling,
+        step_doubling_months: step_d,
+        step_bias_months: step_d - true_doubling,
+        step_estimate_log2: step,
     }
 }
 

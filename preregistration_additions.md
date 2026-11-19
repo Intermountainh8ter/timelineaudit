@@ -173,3 +173,14 @@ Motivation: no source scores forecasters' own revisions against what resolved. T
 - Falsifier: that value below 0.05 at seed 7, or the noise-only gain above 0.02, or the always-0.5 skill not equal to 0.
 - Command: `cargo run --release --locked -- revision-audit --out results/472-revision-audit.json --seed 7`
 - Limit: a statement about one simulated world. No real forecast or revision is scored.
+
+## 2026-11-18T23:59:59Z suite-refresh proposal:960979eebbf016a4c1e62399d7348772fb299e99d30bf3e3ffe75ea886e2c9cc
+
+Motivation: a doubling-time fit depends on the task suite, so a suite refresh that shifts the level can change a pace estimate with no change in capability. This section fixes a SIMULATED check with a known true doubling time.
+
+- Hypothesis: in a simulated exponential horizon series (seed 7, 37 monthly points, true doubling time 6 months, log2 noise of half-width 0.1) with a suite refresh at month 18 that adds a step of 1.0 log2 units to every later observation, a naive ordinary-least-squares log fit understates the doubling time by at least 0.8 months (bias at most -0.8), while a fit with a step term at the refresh has absolute bias under 0.1 months.
+- Metric: `/metrics/naive_bias_months`.
+- Expected: at most -0.8 months (range -3.0 to -0.8).
+- Falsifier: naive bias above -0.8 months at seed 7, or an absolute bias of 0.1 months or more for the step-term fit.
+- Command: `cargo run --locked --release -- suite-refresh --seed 7 --true-doubling-months 6 --refresh-month 18 --step-log2 1.0 --out results/473-suite-refresh.json`
+- Limit: a statement about one simulated series, a known refresh month and an ordinary-least-squares fit only. No real benchmark or measured horizon is scored.

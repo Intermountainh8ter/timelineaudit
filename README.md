@@ -194,6 +194,10 @@ seed; it says nothing about any real source.
 
 `results/471-ceiling-doubling.json` fits a doubling time to a simulated horizon series whose true doubling time is 6 months, clipped at suite ceilings. With the cap at 0.25 of the top horizon the fit overstates the doubling time by 2.172805 months; the uncapped fit is off by -0.00149 months. The bias at the lowest cap exceeds the uncapped bias by 2.174295 months. This is a simulation of one series and says nothing about any measured horizon.
 
+## The suite-refresh audit
+
+`results/473-suite-refresh.json` fits a doubling time to a simulated horizon series whose true doubling time is 6 months, with a one-time level step of 1 log2 unit at month 18 of a suite refresh. The naive fit is off by -1.174877 months; a fit with a step term is off by -0.048344 months. This is a simulation of one series with a known refresh month and says nothing about any measured horizon.
+
 ## The revision audit
 
 `results/472-revision-audit.json` scores 400 resolved simulated claims for a prior forecast, an informative revision and a noise-only revision. The informative revision's Brier skill against the coin is 0.230045 above the prior's, the noise-only revision's is -0.047939 relative to the prior's, and an always-0.5 responder scores 0.000000. This is a simulation; no real forecast or revision is scored.
