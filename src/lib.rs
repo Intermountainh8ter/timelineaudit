@@ -1951,6 +1951,96 @@ mod label_noise_tests {
     }
 }
 
+// ---------------------------------------------------------------- tasks per model
+
+/// Result of the tasks-per-model sweep at one n.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TasksPerModelRow {
+    pub n_tasks: usize,
+    pub wrong_sign_share: f64,
+    pub median_abs_log_error: f64,
+}
+
+/// Simulate `reps` frontiers of `n_models` models spaced 6 months apart whose
+/// true 50% horizon doubles every `true_doubling` months (4 minutes at month
+/// 0), each given `n` log-uniform tasks (1 to 1000 minutes, slope 1.0 per
+/// natural-log unit, one attempt). Fit a logistic per model, regress ln
+/// horizon on date, and report the share of replicates with an undefined or
+/// non-positive slope and the median absolute ln ratio of fitted to true
+/// doubling time among the defined ones.
+pub fn tasks_per_model(
+    seed: u64,
+    true_doubling: f64,
+    n_models: usize,
+    reps: usize,
+    ns: &[usize],
+) -> Vec<TasksPerModelRow> {
+    let hi = 1000.0_f64.ln();
+    ns.iter()
+        .map(|&n| {
+            let mut rng = Rng::new(seed);
+            let (mut bad, mut errs) = (0usize, Vec::new());
+            for _ in 0..reps {
+                let (mut ts, mut hs) = (Vec::new(), Vec::new());
+                for m in 0..n_models {
+                    let t = 6.0 * m as f64;
+                    let ln50 = 4.0_f64.ln() + t / true_doubling * std::f64::consts::LN_2;
+                    let mut xs = Vec::with_capacity(n);
+                    let mut ys = Vec::with_capacity(n);
+                    for _ in 0..n {
+                        let x = rng.unit() * hi;
+                        let p = 1.0 / (1.0 + (-(ln50 - x)).exp());
+                        xs.push(x);
+                        ys.push(rng.coin(p));
+                    }
+                    if let Some((a, b)) = logistic_fit(&xs, &ys) {
+                        if b < 0.0 {
+                            ts.push(t);
+                            hs.push(-a / b);
+                        }
+                    }
+                }
+                if ts.len() < 3 {
+                    bad += 1;
+                    continue;
+                }
+                let k = ts.len() as f64;
+                let (mt, mh) = (ts.iter().sum::<f64>() / k, hs.iter().sum::<f64>() / k);
+                let sxx: f64 = ts.iter().map(|t| (t - mt) * (t - mt)).sum();
+                let sxy: f64 = ts.iter().zip(&hs).map(|(t, h)| (t - mt) * (h - mh)).sum();
+                let slope = sxy / sxx;
+                if slope <= 0.0 {
+                    bad += 1;
+                    continue;
+                }
+                errs.push(
+                    ((std::f64::consts::LN_2 / slope) / true_doubling)
+                        .ln()
+                        .abs(),
+                );
+            }
+            TasksPerModelRow {
+                n_tasks: n,
+                wrong_sign_share: bad as f64 / reps as f64,
+                median_abs_log_error: median(&mut errs),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tasks_per_model_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_more_tasks_help() {
+        let a = tasks_per_model(7, 7.0, 8, 40, &[10, 200]);
+        assert_eq!(a, tasks_per_model(7, 7.0, 8, 40, &[10, 200]));
+        assert!(a[1].median_abs_log_error < a[0].median_abs_log_error);
+        assert!(a[1].wrong_sign_share <= a[0].wrong_sign_share);
+    }
+}
+
 /// One row of the difficulty-spread audit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DifficultyRow {

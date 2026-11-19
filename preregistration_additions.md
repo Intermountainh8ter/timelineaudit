@@ -250,3 +250,14 @@ Motivation: a critique argues a typical 80% horizon is optimistic because hard t
 - Falsifier: that value below 0.3, or the 50% horizon departing as much as the 80% one.
 - Command: `cargo run --release --locked -- difficulty-spread --seed 7 --out results/483-difficulty-spread.json`
 - Limit: one simulated suite with Gaussian difficulty offsets and a maximum-likelihood two-parameter fit. Tau is in log-odds units. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:52:04Z tasks-per-model proposal:cb8248a22ef0af6e918b2893de9e40f2bb8728e1e2492b10b5c35b3bbf89acc4
+
+Motivation: a trend slope is only as stable as the number of tasks behind each model's horizon. This section fixes a SIMULATED sweep of tasks per model on a constant-exponential frontier with known doubling time.
+
+- Hypothesis: with a true doubling time of 7 months, 8 models spaced 6 months apart, 200 replicates per setting, task lengths log-uniform from 1 to 1000 minutes, log-odds slope 1.0 per natural-log unit and one attempt per task, giving each model only 10 tasks makes the share of replicates with a wrong-sign or undefined fitted slope at least 0.05, while at 200 tasks per model that share is below 0.01, and the median absolute log error of the fitted doubling time at 10 tasks is at least 3 times that at 200 tasks. A model whose logistic fit is separable or has a non-decreasing success curve is dropped; a replicate with fewer than 3 usable models is undefined.
+- Metric: `/wrong_sign_share_at_smallest_n`.
+- Expected: at least 0.05 at 10 tasks per model (range 0.05 to 1.0).
+- Falsifier: the share at 10 tasks below 0.05, or the share at 200 tasks at least 0.01.
+- Command: `cargo run --release --locked -- tasks-per-model --seed 7 --out results/485-tasks-per-model.json`
+- Limit: one simulated frontier with correct logistic form and a maximum-likelihood per-model fit followed by ordinary least squares on log horizon. No real benchmark or measured horizon is scored.

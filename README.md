@@ -254,3 +254,14 @@ allowed, so the finite-sample error alone exceeds that bound. The
 pre-registered hypothesis is not supported for this setup. This is a
 simulation with Gaussian offsets; no real benchmark or measured horizon is
 scored.
+
+## The tasks-per-model audit
+
+`results/485-tasks-per-model.json` simulates 8 models on a frontier with a true
+doubling time of 7 months, 200 replicates per setting, and gives each model
+10, 30, 100 or 200 tasks. The share of replicates with a wrong-sign or
+undefined slope is 0.04 at 10 tasks and 0.0 at 200 tasks, so the pre-registered
+threshold of 0.05 at 10 tasks was not reached and the hypothesis is refuted.
+The median absolute log error of the fitted doubling time is 0.273536 at 10
+tasks and 0.040427 at 200. This is a simulation with a correct logistic form
+and says nothing about any real benchmark.
