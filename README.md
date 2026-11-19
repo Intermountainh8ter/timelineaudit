@@ -240,3 +240,17 @@ and the median fitted slope is 0.773652; the 50% horizon log ratio is
 hypothesis is supported for this setup: noisy labels understate the 80%
 horizon far more than the 50% one. This is a simulation with correct logistic
 form; no real benchmark or measured horizon is scored.
+
+## The difficulty-spread audit
+
+`results/483-difficulty-spread.json` simulates 500 suites of 200 tasks whose
+log-odds of success carry a per-task offset of spread tau around a log-linear
+function of length (true 50% horizon 60 minutes, slope 1 per natural-log unit).
+It compares a two-parameter logistic fit with the true marginal horizons. At
+tau 2 the median absolute log ratio of fitted to marginal 80% horizon is
+0.277716, below the pre-registered 0.3, and the 50% horizon figure is
+0.192547. At tau 0 the 80% figure is 0.192455, above the 0.1 the hypothesis
+allowed, so the finite-sample error alone exceeds that bound. The
+pre-registered hypothesis is not supported for this setup. This is a
+simulation with Gaussian offsets; no real benchmark or measured horizon is
+scored.

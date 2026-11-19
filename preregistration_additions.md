@@ -239,3 +239,14 @@ Motivation: METR names noise in human task-length estimates as the aspect it is 
 - Falsifier: median 80% log ratio above -0.3 at sigma 1.0, or an absolute 50% log ratio of 0.1 or more, or an absolute 80% log ratio of 0.05 or more at sigma 0.
 - Command: `cargo run --release --locked -- label-noise --seed 7 --out results/482-label-noise.json`
 - Limit: one simulated suite with a correct logistic form and a maximum-likelihood fit on the noisy labels. Sigma is in natural-log units of length. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T00:43:00Z difficulty-spread proposal:0e2bd5aa8198e0490d860cd44cfbf61783c05e9c23db2db14494b1e166cfb8f7
+
+Motivation: a critique argues a typical 80% horizon is optimistic because hard tasks drag the average more than easy ones push it up. This section fixes a SIMULATED check of how far a two-parameter logistic fit's 50% and 80% horizons depart from the true marginal horizons when per-task difficulty varies around a log-linear function of length.
+
+- Hypothesis: in a simulated suite (seed 7, 200 tasks log-uniform in length from 1 to 1000 minutes, log-odds slope 1.0 per natural-log unit of length, log-odds zero at 60 minutes, per-task difficulty offset N(0, tau^2) in log-odds, 500 replicates, one attempt per task), the median absolute log ratio of fitted to marginal 80% horizon is within 0.1 at tau 0 but at least 0.3 at tau 2, and the 50% horizon departs by less than the 80% one. Marginal horizons are computed by numerical integration of success probability over the difficulty offset.
+- Metric: `/gap/fit_vs_marginal_log_ratio_at_tau_max`.
+- Expected: absolute log ratio of fitted to marginal 80% horizon at tau 2 at least 0.3 (range 0.3 to 5.0).
+- Falsifier: that value below 0.3, or the 50% horizon departing as much as the 80% one.
+- Command: `cargo run --release --locked -- difficulty-spread --seed 7 --out results/483-difficulty-spread.json`
+- Limit: one simulated suite with Gaussian difficulty offsets and a maximum-likelihood two-parameter fit. Tau is in log-odds units. No real benchmark or measured horizon is scored.

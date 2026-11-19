@@ -1950,3 +1950,113 @@ mod label_noise_tests {
         assert!(logistic_fit(&x, &y).is_none());
     }
 }
+
+/// One row of the difficulty-spread audit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DifficultyRow {
+    pub tau: f64,
+    pub marginal_h50: f64,
+    pub marginal_h80: f64,
+    pub h50_log_ratio: f64,
+    pub h80_log_ratio: f64,
+}
+
+/// Marginal success probability at log length `x` when the log-odds carry an
+/// N(0, tau^2) per-task offset, by trapezoid quadrature over the offset.
+fn marginal_p(x: f64, slope: f64, ln50: f64, tau: f64) -> f64 {
+    if tau == 0.0 {
+        return 1.0 / (1.0 + (-slope * (ln50 - x)).exp());
+    }
+    let (steps, lim) = (400usize, 6.0_f64);
+    let h = 2.0 * lim / steps as f64;
+    let (mut num, mut den) = (0.0, 0.0);
+    for i in 0..=steps {
+        let g = -lim + h * i as f64;
+        let w = (-0.5 * g * g).exp() * if i == 0 || i == steps { 0.5 } else { 1.0 };
+        num += w / (1.0 + (-(slope * (ln50 - x) + tau * g)).exp());
+        den += w;
+    }
+    num / den
+}
+
+/// Bisection for the log length where the marginal success rate equals `q`.
+fn marginal_horizon(q: f64, slope: f64, ln50: f64, tau: f64) -> f64 {
+    let (mut lo, mut hi) = (ln50 - 60.0, ln50 + 60.0);
+    for _ in 0..100 {
+        let mid = 0.5 * (lo + hi);
+        if marginal_p(mid, slope, ln50, tau) > q {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
+/// SIMULATED. Each task's log-odds of success is `slope * (ln h50 - x)` plus
+/// an N(0, tau^2) offset; a two-parameter logistic of success on log length is
+/// fitted and its 50% and 80% horizons compared with the true marginal ones.
+/// Reports the median absolute log ratio per tau. Separable replicates are
+/// skipped.
+pub fn difficulty_spread(
+    seed: u64,
+    n_tasks: usize,
+    reps: usize,
+    slope: f64,
+    h50: f64,
+    taus: &[f64],
+) -> Vec<DifficultyRow> {
+    let hi = 1000.0_f64.ln();
+    let ln50 = h50.ln();
+    taus.iter()
+        .map(|&tau| {
+            let m50 = marginal_horizon(0.5, slope, ln50, tau);
+            let m80 = marginal_horizon(0.8, slope, ln50, tau);
+            let mut rng = Rng::new(seed);
+            let (mut r50, mut r80) = (Vec::new(), Vec::new());
+            for _ in 0..reps {
+                let mut xs = Vec::with_capacity(n_tasks);
+                let mut ys = Vec::with_capacity(n_tasks);
+                for _ in 0..n_tasks {
+                    let x = rng.unit() * hi;
+                    let g = gauss(&mut rng);
+                    let p = 1.0 / (1.0 + (-(slope * (ln50 - x) + tau * g)).exp());
+                    ys.push(rng.coin(p));
+                    xs.push(x);
+                }
+                if let Some((a, b)) = logistic_fit(&xs, &ys) {
+                    if b < 0.0 {
+                        r50.push(((-a / b) - m50).abs());
+                        r80.push((((4.0_f64.ln() - a) / b) - m80).abs());
+                    }
+                }
+            }
+            DifficultyRow {
+                tau,
+                marginal_h50: m50.exp(),
+                marginal_h80: m80.exp(),
+                h50_log_ratio: median(&mut r50),
+                h80_log_ratio: median(&mut r80),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod difficulty_spread_tests {
+    use super::*;
+
+    #[test]
+    fn marginal_matches_closed_form_at_zero_tau() {
+        let h = marginal_horizon(0.8, 1.0, 60.0_f64.ln(), 0.0);
+        assert!((h - (60.0_f64.ln() - 4.0_f64.ln())).abs() < 1e-9);
+    }
+
+    #[test]
+    fn marginal_h50_is_symmetric_and_deterministic() {
+        let a = difficulty_spread(7, 200, 20, 1.0, 60.0, &[0.0, 2.0]);
+        assert_eq!(a, difficulty_spread(7, 200, 20, 1.0, 60.0, &[0.0, 2.0]));
+        assert!((a[1].marginal_h50 - 60.0).abs() < 1e-6);
+        assert!(a[1].marginal_h80 < a[0].marginal_h80);
+    }
+}
