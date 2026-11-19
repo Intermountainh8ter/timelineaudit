@@ -327,3 +327,14 @@ Motivation: METR notes that the 80% horizon rests on a single fitted slope that 
 - Falsifier: an absolute difference below 0.35 at lapse 0.10.
 - Command: `cargo run --release --locked -- lapse-misfit --seed 7 --out results/492-lapse-misfit.json`
 - Limit: one simulated suite with a specific lapse form and one fixed true slope; no real run or horizon is scored.
+
+## 2026-11-19T01:29:14Z slope-misfit-coverage proposal:b62f51f6f794456196744699ee98ec794cb1e1a2b538ecc31377a8a906e2b7d0
+
+Motivation: METR notes its bootstrap intervals capture task-distribution uncertainty but not modelling-choice uncertainty. This section fixes a SIMULATED check of the coverage of a task-resampling bootstrap interval on the fitted 50% and 80% horizons when the true log-odds slope is a multiple of 1.0.
+
+- Hypothesis: with a true log-odds slope of 2.0 per natural-log unit (2x the baseline slope 1.0), a 90% percentile bootstrap interval (task resampling) covers the true 80% horizon in less than 0.80 of simulated suites, while 50% horizon coverage stays at or above 0.85. Setup: 100 tasks, length log-uniform 1 to 1000 minutes, success sigmoid(slope * (ln 60 - ln length)), one attempt, 200 suites per slope, 200 bootstrap resamples per suite, slope multiples 1 and 2. Fit: plain two-parameter logistic of success on ln length; separable or non-decreasing fits (suites or resamples) are skipped. Coverage is over suites with an interval of at least 100 valid resamples.
+- Metric: `/coverage_80_at_max_misfit`.
+- Expected: below 0.80 (range 0.0 to 0.8). A back-of-envelope expectation is that a logistic fit with a free slope stays near nominal at any slope, so a null is plausible.
+- Falsifier: coverage of the true 80% horizon at slope multiple 2 of 0.80 or higher.
+- Command: `cargo run --locked --release -- slope-misfit-coverage --seed 7 --out results/493-slope-misfit-coverage.json`
+- Limit: the fitted slope is free, so a changed true slope is not a structural misfit of the logistic form; one simulated suite design; no real run or horizon is scored.

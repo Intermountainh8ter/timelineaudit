@@ -2715,3 +2715,106 @@ mod lapse_misfit_tests {
         assert!(a[0].h50_log_ratio.abs() < 0.5);
     }
 }
+
+// ------------------------------------------------------ slope misfit coverage
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SlopeCoverageRow {
+    pub slope: f64,
+    pub coverage_50: f64,
+    pub coverage_80: f64,
+    pub suites: usize,
+}
+
+/// SIMULATED. Task length log-uniform 1 to 1000 minutes; success probability
+/// `sigmoid(slope * (ln 60 - x))`, one attempt. A plain logistic is fitted
+/// and a 90% percentile bootstrap (task resampling) interval is built on the
+/// 50% and 80% horizons; the share of suites whose interval contains the
+/// true horizon is reported per slope.
+pub fn slope_misfit_coverage(
+    seed: u64,
+    tasks: usize,
+    suites: usize,
+    boots: usize,
+    slopes: &[f64],
+) -> Vec<SlopeCoverageRow> {
+    let hi = 1000.0_f64.ln();
+    let mid = 60.0_f64.ln();
+    let logit = |q: f64| (q / (1.0 - q)).ln();
+    let horizons = |xs: &[f64], ys: &[bool]| {
+        logistic_fit(xs, ys).and_then(|(a, b)| {
+            if b < 0.0 {
+                Some((-a / b, (logit(0.8) - a) / b))
+            } else {
+                None
+            }
+        })
+    };
+    slopes
+        .iter()
+        .map(|&slope| {
+            let mut rng = Rng::new(seed);
+            let t50 = mid;
+            let t80 = mid - logit(0.8) / slope;
+            let (mut c50, mut c80, mut used) = (0usize, 0usize, 0usize);
+            for _ in 0..suites {
+                let xs: Vec<f64> = (0..tasks).map(|_| rng.unit() * hi).collect();
+                let ys: Vec<bool> = xs
+                    .iter()
+                    .map(|&x| rng.coin(1.0 / (1.0 + (slope * (x - mid)).exp())))
+                    .collect();
+                if horizons(&xs, &ys).is_none() {
+                    continue;
+                }
+                let (mut b50, mut b80) = (Vec::new(), Vec::new());
+                for _ in 0..boots {
+                    let idx: Vec<usize> = (0..tasks)
+                        .map(|_| ((rng.unit() * tasks as f64) as usize).min(tasks - 1))
+                        .collect();
+                    let bx: Vec<f64> = idx.iter().map(|&i| xs[i]).collect();
+                    let by: Vec<bool> = idx.iter().map(|&i| ys[i]).collect();
+                    if let Some((h50, h80)) = horizons(&bx, &by) {
+                        b50.push(h50);
+                        b80.push(h80);
+                    }
+                }
+                if b50.len() < 100 {
+                    continue;
+                }
+                used += 1;
+                let covers = |v: &mut Vec<f64>, truth: f64| {
+                    v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    let n = v.len();
+                    let lo = v[((n as f64) * 0.05) as usize];
+                    let up = v[(((n as f64) * 0.95) as usize).min(n - 1)];
+                    lo <= truth && truth <= up
+                };
+                if covers(&mut b50, t50) {
+                    c50 += 1;
+                }
+                if covers(&mut b80, t80) {
+                    c80 += 1;
+                }
+            }
+            let d = used.max(1) as f64;
+            SlopeCoverageRow {
+                slope,
+                coverage_50: c50 as f64 / d,
+                coverage_80: c80 as f64 / d,
+                suites: used,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod slope_coverage_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_bounded() {
+        let a = slope_misfit_coverage(7, 100, 6, 120, &[1.0, 2.0]);
+        assert_eq!(a, slope_misfit_coverage(7, 100, 6, 120, &[1.0, 2.0]));
+        assert!(a.iter().all(|r| (0.0..=1.0).contains(&r.coverage_80)));
+    }
+}

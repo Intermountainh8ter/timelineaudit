@@ -295,3 +295,13 @@ of fitted to true horizon is -0.167819 at 50% and -0.075915 at 80%, an absolute
 gap of 0.091904, below the pre-registered 0.35. The hypothesis is refuted for
 this setup. This is a simulation with one fixed slope and says nothing about
 any real horizon.
+
+## The slope-misfit coverage audit
+
+`results/493-slope-misfit-coverage.json` draws 200 suites of 100 tasks from a
+known logistic curve and builds a 90% task-resampling bootstrap interval
+(200 resamples) on the fitted horizons. At a true slope twice the baseline,
+coverage of the true 80% horizon is 0.835 and of the 50% horizon 0.85. The
+pre-registered expectation of 80% coverage below 0.80 was not met (null
+result). The fitted slope is free, so this is not a structural misfit. This is
+a simulation; no real horizon is scored.
