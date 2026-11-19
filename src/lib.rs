@@ -2286,3 +2286,88 @@ mod cluster_coverage_tests {
         assert!(lo < hi);
     }
 }
+
+// ---------------------------------------------------------------- task influence
+
+/// One row of the task-influence audit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TaskInfluenceRow {
+    pub long_tasks: usize,
+    pub median_max_shift: f64,
+    pub valid_suites: usize,
+}
+
+/// SIMULATED. A suite of `n_tasks` tasks: `k` with log length uniform on
+/// `[ln h50, ln 1000]` and the rest uniform on `[0, ln h50]`; success is
+/// `sigmoid(slope=1 * (ln h50 - x))`, one attempt. Fit a logistic, refit
+/// dropping each task in turn, and take the largest relative shift of the
+/// fitted 50% horizon in minutes. Report the median over suites.
+pub fn task_influence(
+    seed: u64,
+    n_tasks: usize,
+    reps: usize,
+    h50: f64,
+    long_counts: &[usize],
+) -> Vec<TaskInfluenceRow> {
+    let hi = 1000.0_f64.ln();
+    let ln50 = h50.ln();
+    long_counts
+        .iter()
+        .map(|&k| {
+            let mut rng = Rng::new(seed);
+            let mut shifts = Vec::new();
+            for _ in 0..reps {
+                let mut xs = Vec::with_capacity(n_tasks);
+                let mut ys = Vec::with_capacity(n_tasks);
+                for i in 0..n_tasks {
+                    let x = if i < k {
+                        ln50 + rng.unit() * (hi - ln50)
+                    } else {
+                        rng.unit() * ln50
+                    };
+                    let p = 1.0 / (1.0 + (-(ln50 - x)).exp());
+                    ys.push(rng.coin(p));
+                    xs.push(x);
+                }
+                let full = match logistic_fit(&xs, &ys) {
+                    Some((a, b)) if b < 0.0 => (-a / b).exp(),
+                    _ => continue,
+                };
+                let mut worst: Option<f64> = None;
+                for d in 0..n_tasks {
+                    let rx: Vec<f64> = (0..n_tasks).filter(|&i| i != d).map(|i| xs[i]).collect();
+                    let ry: Vec<bool> = (0..n_tasks).filter(|&i| i != d).map(|i| ys[i]).collect();
+                    if let Some((a, b)) = logistic_fit(&rx, &ry) {
+                        if b < 0.0 {
+                            let s = ((-a / b).exp() - full).abs() / full;
+                            worst = Some(worst.map_or(s, |w: f64| w.max(s)));
+                        }
+                    }
+                }
+                if let Some(w) = worst {
+                    shifts.push(w);
+                }
+            }
+            let valid = shifts.len();
+            TaskInfluenceRow {
+                long_tasks: k,
+                median_max_shift: median(&mut shifts),
+                valid_suites: valid,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod task_influence_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_nonnegative() {
+        let a = task_influence(7, 20, 5, 500.0, &[2, 10]);
+        assert_eq!(a, task_influence(7, 20, 5, 500.0, &[2, 10]));
+        for r in &a {
+            assert!(r.median_max_shift >= 0.0 || r.valid_suites == 0);
+        }
+    }
+}

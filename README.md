@@ -269,3 +269,7 @@ and says nothing about any real benchmark.
 ## The cluster-coverage audit
 
 `results/486-cluster-coverage.json` draws 20 families of 5 tasks with a shared difficulty offset, 300 replicates and 200 bootstrap resamples per interval. At offset spread 1.0 the 95% task-level bootstrap interval covers the true 50% horizon in 0.876667 of replicates and the family-level interval in 0.92; at spread 0 they cover in 0.94 and 0.92. The pre-registered expectation of at most 0.85 for the task-level interval was not met. This is a simulation with one suite size; no real benchmark was scored.
+
+## The task-influence audit
+
+`results/487-task-influence.json` draws 200 simulated suites of 40 tasks for a model whose true 50% horizon is 500 minutes, with the longest task at 1000 minutes, and refits dropping each task in turn. With 2 tasks above the horizon the median largest relative shift in the fitted horizon is 0.424353; with 20 tasks above it, 0.152267. Dropping one task moves a horizon estimate much more when few long tasks anchor it. This is a simulation with a correct logistic form; no real benchmark was scored.

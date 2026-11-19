@@ -272,3 +272,14 @@ Motivation: METR's hierarchical bootstrap over task families, tasks and attempts
 - Falsifier: task-level coverage at spread 1.0 above 0.85, or family-level coverage at spread 1.0 below 0.90, or either coverage at spread 0 below 0.90.
 - Command: `cargo run --release --locked -- cluster-coverage --seed 7 --out results/486-cluster-coverage.json`
 - Limit: one simulated suite with correct logistic form (slope 1.0 per natural-log unit), one attempt per task, percentile intervals, maximum-likelihood fit. No real benchmark or measured horizon is scored.
+
+## 2026-11-19T01:00:40Z task-influence proposal:dccd0987e5d23d96525b910ff5b34bb55b308eb4a5fd6512250f5ea6c2950819
+
+Motivation: swapping one task in or out of a suite with few long tasks can move a frontier horizon estimate widely. This section fixes a SIMULATED leave-one-task-out check of how far a single task moves a fitted 50% horizon when the model's true horizon sits near the longest task length.
+
+- Hypothesis: in a simulated suite (seed 7, 40 tasks, true 50% horizon 500 minutes, log-odds slope 1.0 per natural-log unit of length, one attempt per task, 200 suites per setting), where k tasks have length log-uniform between 500 and 1000 minutes and the other 40-k log-uniform between 1 and 500 minutes, dropping the single most influential task shifts the fitted 50% horizon by a median relative shift (abs(dropped fit - full fit) / full fit) of at least 0.25 at k = 2, and that median is at least twice the median at k = 20. Suites whose full fit is separable or has a non-negative slope are skipped; refits that fail are ignored.
+- Metric: `/max_relative_shift_at_few_long_tasks`.
+- Expected: at least 0.25 at k = 2 and at least twice the k = 20 value (range 0.25 to 5.0).
+- Falsifier: a median max relative shift below 0.25 at k = 2, or a ratio to the k = 20 shift below 2.
+- Command: `cargo run --release --locked -- task-influence --seed 7 --out results/487-task-influence.json`
+- Limit: one simulated suite with correct logistic form and a maximum-likelihood two-parameter fit; relative shift is on the minutes scale and unbounded above. No real benchmark or measured horizon is scored.
