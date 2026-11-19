@@ -1605,3 +1605,96 @@ pub fn revision_audit(seed: u64, n: usize) -> RevisionAudit {
         always_half_skill: skill(bh),
     }
 }
+
+// ---------------------------------------------------------------- fit points
+
+/// Error and coverage of a projected date when fitting the last `n` points.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FitPointsRow {
+    pub n: usize,
+    pub median_abs_error_months: f64,
+    pub interval_coverage: f64,
+}
+
+/// 95% two-sided Student t critical value for `df` degrees of freedom.
+fn t_crit_95(df: usize) -> f64 {
+    match df {
+        2 => 4.303,
+        4 => 2.776,
+        6 => 2.447,
+        10 => 2.228,
+        18 => 2.101,
+        _ => 1.96,
+    }
+}
+
+/// For each `n` in `ns`, simulate `reps` series `log2 h(t) = t / true_doubling`
+/// plus triangular noise of half-width 0.1 at `t = 0..=36`, fit a line to the
+/// last `n` points and project the month at which the fitted line reaches the
+/// true level at month 60. Reports the median absolute date error and the
+/// share of replicates whose 95% confidence interval for the fitted level at
+/// month 60 contains the true level. Every `n` sees the same series.
+pub fn fit_points(seed: u64, true_doubling: f64, reps: usize, ns: &[usize]) -> Vec<FitPointsRow> {
+    let target_t = 60.0;
+    let level = target_t / true_doubling;
+    let mut errs: Vec<Vec<f64>> = vec![Vec::new(); ns.len()];
+    let mut hits = vec![0usize; ns.len()];
+    let mut rng = Rng::new(seed);
+    for _ in 0..reps {
+        let y: Vec<f64> = (0..=36)
+            .map(|m| m as f64 / true_doubling + (rng.unit() + rng.unit() - 1.0) * 0.1)
+            .collect();
+        for (k, &n) in ns.iter().enumerate() {
+            let start = y.len() - n;
+            let xs: Vec<f64> = (start..y.len()).map(|m| m as f64).collect();
+            let ys = &y[start..];
+            let b = ols_slope(&xs, ys);
+            let nf = n as f64;
+            let mx = xs.iter().sum::<f64>() / nf;
+            let my = ys.iter().sum::<f64>() / nf;
+            let a = my - b * mx;
+            errs[k].push(((level - a) / b - target_t).abs());
+            let sse: f64 = xs
+                .iter()
+                .zip(ys)
+                .map(|(x, v)| (v - a - b * x).powi(2))
+                .sum();
+            let sxx: f64 = xs.iter().map(|x| (x - mx).powi(2)).sum();
+            let s = (sse / (nf - 2.0)).sqrt();
+            let hw = t_crit_95(n - 2) * s * (1.0 / nf + (target_t - mx).powi(2) / sxx).sqrt();
+            if (a + b * target_t - level).abs() <= hw {
+                hits[k] += 1;
+            }
+        }
+    }
+    ns.iter()
+        .enumerate()
+        .map(|(k, &n)| {
+            let mut e = errs[k].clone();
+            e.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let med = if e.len() % 2 == 1 {
+                e[e.len() / 2]
+            } else {
+                (e[e.len() / 2 - 1] + e[e.len() / 2]) / 2.0
+            };
+            FitPointsRow {
+                n,
+                median_abs_error_months: med,
+                interval_coverage: hits[k] as f64 / reps as f64,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod fit_points_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_fewer_points_err_more() {
+        let a = fit_points(7, 6.0, 200, &[4, 6, 8, 12, 20]);
+        assert_eq!(a, fit_points(7, 6.0, 200, &[4, 6, 8, 12, 20]));
+        assert!(a[1].median_abs_error_months > a[4].median_abs_error_months);
+        assert!(a.iter().all(|r| (0.0..=1.0).contains(&r.interval_coverage)));
+    }
+}

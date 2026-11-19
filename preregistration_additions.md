@@ -195,3 +195,14 @@ Motivation: published pace ratios for quantitative AI 2027 claims differ by upda
 - Falsifier: that value below 0.10 at seed 7, or a spread with mis-grading that is not larger than the spread without it.
 - Command: `cargo run --locked -q --release -- pace-ratio-conventions --seed 7 --n 40 --true-ratio 0.65 --misgrade-share 0.2 --out results/474-pace-ratio-conventions.json`
 - Limit: a statement about one simulated claim set. No real claim, grading or source is scored.
+
+## 2026-11-19T00:08:30Z fit-points proposal:e1e92e2ee2af450812ed8391fbbb5671d4032cc13c4253f730fc82bdaa803c4c
+
+Motivation: a faster doubling-time estimate is said to rest on few recent points, so the error of a projected date should depend on how many points enter the fit. This section fixes a SIMULATED check with a known true doubling time.
+
+- Hypothesis: in simulated monthly log2-horizon series (seed 7, 500 replicate series, true doubling time 6 months, triangular log2 noise of half-width 0.1, fit on the last n of 37 points, projection to month 60), the median absolute error of the projected date when fitting the last 6 points is at least twice the error when fitting the last 20 points.
+- Metric: `/fit_points/projection_error_months_at_n6`.
+- Expected: at least 2 times the n=20 error (range 0.5 to 12.0 months); 95% interval coverage at n=6 differs from 0.95.
+- Falsifier: median absolute error at n=6 below twice that at n=20 at seed 7.
+- Command: `cargo run --release --locked -- fit-points --out results/475-fit-points.json --seed 7`
+- Limit: a statement about one simulated series family with correct exponential form and an ordinary-least-squares fit. Interval coverage is that of the 95% confidence interval for the fitted level at month 60, with Student t critical values. No real benchmark or measured horizon is scored.

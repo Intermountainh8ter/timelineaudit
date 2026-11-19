@@ -205,3 +205,7 @@ seed; it says nothing about any real source.
 ## The pace-ratio audit
 
 `results/474-pace-ratio-conventions.json` scores 40 simulated quantitative claims with a true pace ratio of 0.65, 6 of them graded against a wrong curve. Mean-of-ratios gives 0.76247, ratio-of-sums 0.739932 and median-of-ratios 0.542227, a spread of 0.220243; with no mis-graded claims the spread is 0.197523. The spread is mostly the convention, not the mis-grading. This is a simulation of one claim set and says nothing about any real grading.
+
+## The fit-points audit
+
+`results/475-fit-points.json` fits a doubling time to the last n of 37 monthly points in 500 simulated series with a known true doubling time of 6 months, and projects the date for a fixed level at month 60. The median absolute date error is 1.126816 months at n=6 and 0.219417 months at n=20, a ratio of 5.135492, and 1.92094 months at n=4. Coverage of the 95% interval for the fitted level is 0.948 at n=6 and 0.948 at n=20, so the interval stays near nominal while the error grows. This is a simulation with the correct model form; it says nothing about any real benchmark.
