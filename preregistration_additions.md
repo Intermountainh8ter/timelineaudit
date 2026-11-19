@@ -316,3 +316,14 @@ Motivation: Bosse et al. report an automated question resolver at about 95% accu
 - Falsifier: a median shift above -0.10 at rate 0.05.
 - Command: `cargo run --release --locked -- resolver-error --seed 7 --out results/491-resolver-error.json`
 - Limit: the fast-versus-slow group gap named in the proposal is not computed here. Errors are independent of claim and outcome; one simulated world; no real resolver is scored.
+
+## 2026-11-19T01:24:48Z lapse-misfit proposal:787cba39b407ccb071534ca71b452ed3eceda5163f31093fe624e72d4c8a7b62
+
+Motivation: METR notes that the 80% horizon rests on a single fitted slope that the easy and hard ends of a task suite constrain poorly. This section fixes a SIMULATED check of how an easy-end lapse (success never reaches 1) biases the standard two-parameter logistic fit's 80% horizon against its 50% horizon.
+
+- Hypothesis: with a true easy-end lapse of 0.10, 100 tasks and one attempt each, the median log ratio of fitted to true 80% horizon has magnitude at least 0.5 while the 50% log-ratio bias stays under 0.15 in magnitude. Setup: task length log-uniform 1 to 1000 minutes, success probability (1 - lapse) * sigmoid(1.0 * (ln 60 - ln length)), 500 suites per lapse, lapse rates 0, 0.05, 0.1. True horizons are the lengths where the true curve equals 0.5 and 0.8 (defined because lapse is below 0.2). Fit: plain logistic of success on ln length; separable or non-decreasing fits are skipped.
+- Metric: `/ratio_80_to_50_bias_at_max_lapse` (absolute difference between the median 80% and 50% log ratios at lapse 0.10).
+- Expected: at least 0.35 (range 0.35 to 5.0).
+- Falsifier: an absolute difference below 0.35 at lapse 0.10.
+- Command: `cargo run --release --locked -- lapse-misfit --seed 7 --out results/492-lapse-misfit.json`
+- Limit: one simulated suite with a specific lapse form and one fixed true slope; no real run or horizon is scored.

@@ -285,3 +285,13 @@ and says nothing about any real benchmark.
 ## The resolver-error audit
 
 `results/491-resolver-error.json` draws 500 sets of 50 resolved claims from a simulated world and flips a share of outcomes at random for the forecaster that states each event's true chance. Median Brier skill against the coin is 0.269191 with no flips and 0.208353 at a flip share of 0.05, a shift of -0.050605, smaller in magnitude than the pre-registered 0.10. At a flip share of 0.1 the shift is -0.097544. This is a simulation with independent errors; no real resolver is scored.
+
+## The lapse-misfit audit
+
+`results/492-lapse-misfit.json` draws 100 tasks, 500 times per setting, from a
+simulated curve whose success never exceeds one minus an easy-end lapse, and
+fits the plain two-parameter logistic. At a lapse of 0.1 the median log ratio
+of fitted to true horizon is -0.167819 at 50% and -0.075915 at 80%, an absolute
+gap of 0.091904, below the pre-registered 0.35. The hypothesis is refuted for
+this setup. This is a simulation with one fixed slope and says nothing about
+any real horizon.

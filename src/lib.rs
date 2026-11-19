@@ -2651,3 +2651,67 @@ mod resolver_error_tests {
         assert!(a[1].median_shift < 0.0);
     }
 }
+
+// ---------------------------------------------------------------- lapse misfit
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LapseMisfitRow {
+    pub lapse: f64,
+    pub h50_log_ratio: f64,
+    pub h80_log_ratio: f64,
+    pub abs_gap: f64,
+    pub valid_suites: usize,
+}
+
+/// SIMULATED. Task length log-uniform 1 to 1000 minutes; success probability
+/// `(1 - lapse) * sigmoid(ln 60 - x)`, one attempt. A plain logistic is
+/// fitted on ln length; the median log ratio of fitted to true 50% and 80%
+/// horizons is reported per lapse (true horizons from the lapsed curve).
+pub fn lapse_misfit(seed: u64, tasks: usize, reps: usize, lapses: &[f64]) -> Vec<LapseMisfitRow> {
+    let hi = 1000.0_f64.ln();
+    let mid = 60.0_f64.ln();
+    lapses
+        .iter()
+        .map(|&lapse| {
+            let mut rng = Rng::new(seed);
+            let logit = |q: f64| (q / (1.0 - q)).ln();
+            let t50 = mid - logit(0.5 / (1.0 - lapse));
+            let t80 = mid - logit(0.8 / (1.0 - lapse));
+            let (mut r50, mut r80) = (Vec::new(), Vec::new());
+            for _ in 0..reps {
+                let xs: Vec<f64> = (0..tasks).map(|_| rng.unit() * hi).collect();
+                let ys: Vec<bool> = xs
+                    .iter()
+                    .map(|&x| rng.coin((1.0 - lapse) / (1.0 + (x - mid).exp())))
+                    .collect();
+                if let Some((a, b)) = logistic_fit(&xs, &ys) {
+                    if b < 0.0 {
+                        r50.push(-a / b - t50);
+                        r80.push((logit(0.8) - a) / b - t80);
+                    }
+                }
+            }
+            let valid = r50.len();
+            let (m50, m80) = (median(&mut r50), median(&mut r80));
+            LapseMisfitRow {
+                lapse,
+                h50_log_ratio: m50,
+                h80_log_ratio: m80,
+                abs_gap: (m80 - m50).abs(),
+                valid_suites: valid,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod lapse_misfit_tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_and_small_bias_without_lapse() {
+        let a = lapse_misfit(7, 100, 40, &[0.0, 0.1]);
+        assert_eq!(a, lapse_misfit(7, 100, 40, &[0.0, 0.1]));
+        assert!(a[0].h50_log_ratio.abs() < 0.5);
+    }
+}
